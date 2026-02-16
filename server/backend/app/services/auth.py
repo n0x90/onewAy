@@ -19,6 +19,7 @@ from app.settings import settings
 
 class Authenticatable(Protocol):
     """Protocol for auth-capable models with username and hashed password."""
+
     username: Mapped[str]
     hashed_password: Mapped[str]
 
@@ -42,6 +43,7 @@ def verify_password(password: str, hashed: str) -> bool:
 
 class TokenType(enum.StrEnum):
     """Supported token-purpose discriminator values."""
+
     CLIENT = "client"
     USER = "user"
     REFRESH = "refresh"  # Should only be used by clients

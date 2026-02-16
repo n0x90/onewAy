@@ -356,9 +356,10 @@ if __name__ == "__main__":
     ]
 
     lock = Lock()
-    with tqdm(
-        total=len(all_modules), desc="Fetching module options"
-    ) as pbar, ThreadPoolExecutor(max_workers=NUM_WORKERS) as executor:
+    with (
+        tqdm(total=len(all_modules), desc="Fetching module options") as pbar,
+        ThreadPoolExecutor(max_workers=NUM_WORKERS) as executor,
+    ):
         futures = [
             executor.submit(worker_fetch_options, chunk, output, lock, pbar)
             for chunk in chunks

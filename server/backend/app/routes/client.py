@@ -79,4 +79,3 @@ async def client_ws(websocket: WebSocket):
 
 # - [ ] /client/update-info
 # - [ ] /client/sync-modules
-
