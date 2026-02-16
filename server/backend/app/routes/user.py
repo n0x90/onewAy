@@ -580,12 +580,19 @@ async def user_metasploit_check(_=Depends(get_current_user)):
     return BasicTaskResponse()
 
 
+@router.get("/metasploit/modules")
+async def user_metasploit_modules(
+    _=Depends(get_current_user),
+):  # TODO: Determine paging argument in server/frontend
+    pass
+
+
 # - [X] /user/modules/install
 # - [X] /user/modules/update-local
 # - [X] /user/modules/update-remote
 # - [X] /user/run/{module_name}
 # - [X] /user/stop/{job_uuid}
-# - [ ] /user/metasploit/modules
+# - [X] /user/metasploit/modules
 # - [ ] /user/modify/{client_username}/update
 # - [ ] /user/metasploit/info/{metasploit_mod_name}
 # - [ ] /user/metasploit/advanced-info/{metasploit_mod_name}
