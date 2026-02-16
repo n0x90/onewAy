@@ -571,6 +571,15 @@ async def user_stop_module(
     return BasicTaskResponse()
 
 
+@router.get("/metasploit/check", response_model=BasicTaskResponse)
+async def user_metasploit_check(_=Depends(get_current_user)):
+    if not shutil.which("msfconsole"):
+        log.warning("Metasploit not installed")
+        return BasicTaskResponse(result="failed")
+
+    return BasicTaskResponse()
+
+
 # - [X] /user/modules/install
 # - [X] /user/modules/update-local
 # - [X] /user/modules/update-remote
