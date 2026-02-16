@@ -72,6 +72,12 @@ class StartModule(WebsocketMessage):
 
 
 @dataclass(slots=True)
+class StopJob(WebsocketMessage):
+    type = "stop_job"
+    job_id: UUID
+
+
+@dataclass(slots=True)
 class Stdout(WebsocketMessage):
     type = "stdout"
     module_name: str

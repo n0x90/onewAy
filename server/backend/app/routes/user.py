@@ -14,10 +14,13 @@ from app.dependencies import get_current_user, get_db
 from app.exceptions import (
     ClientNotAliveError,
     ClientNotFoundError,
+    ClientUuidCouldNotBeResolved,
     ConfigYAMLError,
     CorruptedFieldError,
     DatabaseError,
+    FailedToStopJobError,
     InvalidPathError,
+    JobNotFoundError,
     MissingRequiredFieldError,
     ModuleAlreadyExistsError,
     NoConfigFoundError,
@@ -32,7 +35,6 @@ from app.models.module import Module
 from app.models.refresh_token import RefreshToken
 from app.schemas.general import BasicTaskResponse
 from app.schemas.user import *
-from app.schemas.user import RefreshTokenBasicInfo
 from app.services.auth import hash_password
 from app.services.module_manager import module_manager
 from app.services.user_actions import (
@@ -556,11 +558,24 @@ async def user_run_module(
     return BasicTaskResponse()
 
 
+@router.post("/stop/{job_uuid}", response_model=BasicTaskResponse)
+async def user_stop_module(
+    job_uuid: UUID,
+    _=Depends(get_current_user),
+):
+    try:
+        await module_manager.stop_job(job_uuid)
+    except (JobNotFoundError, ClientUuidCouldNotBeResolved) as e:
+        raise FailedToStopJobError(e) from e
+
+    return BasicTaskResponse()
+
+
 # - [X] /user/modules/install
 # - [X] /user/modules/update-local
 # - [X] /user/modules/update-remote
-# - [ ] /user/run/{module_name}
-# - [ ] /user/stop/{module_name}
+# - [X] /user/run/{module_name}
+# - [X] /user/stop/{job_uuid}
 # - [ ] /user/metasploit/modules
 # - [ ] /user/modify/{client_username}/update
 # - [ ] /user/metasploit/info/{metasploit_mod_name}

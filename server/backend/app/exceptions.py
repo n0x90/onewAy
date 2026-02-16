@@ -174,6 +174,17 @@ class ClientNotAliveError(AppHTTPError):
         super().__init__(msg=self.detail, detail=self.detail)
 
 
+class FailedToStopJobError(AppHTTPError):
+    def __init__(self, err: JobNotFoundError | ClientUuidCouldNotBeResolved):
+        if isinstance(err, JobNotFoundError):
+            self.status_code = 404
+        if isinstance(err, ClientUuidCouldNotBeResolved):
+            self.status_code = 500
+
+        self.detail = str(err)
+        super().__init__(detail=self.detail, msg=self.msg)
+
+
 class WebsocketMessageInvalidDataType(AppWebsocketError):
     def __init__(self):
         super().__init__("Invalid websocket message data type")
@@ -195,6 +206,17 @@ class NoWebsocketManagerSetError(Exception):
     def __init__(self):
         self.msg = "No Websocket Manager is set for Module Manager"
         super().__init__(self.msg)
+
+
+class JobNotFoundError(Exception):
+    def __init__(self, job_id: UUID):
+        self.msg = f"Job {job_id!s} could not be found"
+        super().__init__(self.msg)
+
+
+class ClientUuidCouldNotBeResolved(Exception):
+    def __init__(self, job_id: UUID):
+        self.msg = f"Client UUID could not be resolved for {job_id!s}"
 
 
 def register_exception_handlers(app: FastAPI) -> None:

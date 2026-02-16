@@ -1,8 +1,12 @@
 from uuid import UUID, uuid4
 
-from app.exceptions import NoWebsocketManagerSetError
+from app.exceptions import (
+    ClientUuidCouldNotBeResolved,
+    JobNotFoundError,
+    NoWebsocketManagerSetError,
+)
 from app.services.websocket_manager import WebsocketManager
-from app.services.websocket_message import StartModule
+from app.services.websocket_message import StartModule, StopJob
 
 
 class ModuleManager:
@@ -28,6 +32,20 @@ class ModuleManager:
         job_id = uuid4()
         self.state[job_id] = {client_uuid: module_name}
         return job_id
+
+    async def stop_job(self, job_id: UUID) -> None:
+        job = self.state.get(job_id)
+        if not job:
+            raise JobNotFoundError(job_id)
+
+        msg = StopJob(job_id=job_id)
+        try:
+            client_uuid = next(iter(job.keys()))
+        except StopIteration as e:
+            raise ClientUuidCouldNotBeResolved(job_id) from e
+
+        await self.ws_manager.send(client_uuid, msg.to_json())
+        self.state.pop(job_id, None)
 
     def get_jobs_by_client(self, client_uuid: UUID) -> list[UUID]:
         return [

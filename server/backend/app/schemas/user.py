@@ -3,7 +3,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.client import Client
 from app.utils import Platform
 
 
@@ -58,4 +57,3 @@ class UserModifyClientInstallModuleRequest(BaseModel):
 
 class UserRunModuleRequest(BaseModel):
     client_username: str
-
