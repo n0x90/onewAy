@@ -182,7 +182,23 @@ class FailedToStopJobError(AppHTTPError):
             self.status_code = 500
 
         self.detail = str(err)
-        super().__init__(detail=self.detail, msg=self.msg)
+        super().__init__(detail=self.detail, msg=self.detail)
+
+
+class VersionDotFileNotFoundError(AppHTTPError):
+    status_code = 404
+    detail = "Version dot file in the server's client directory not found"
+
+    def __init__(self):
+        super().__init__(detail=self.detail, msg=self.detail)
+
+
+class ClientUpToDateError(AppHTTPError):
+    status_code = 409
+    detail = "Client already up to date with current version"
+
+    def __init__(self):
+        super().__init__(detail=self.detail, msg=self.detail)
 
 
 class WebsocketMessageInvalidDataType(AppWebsocketError):

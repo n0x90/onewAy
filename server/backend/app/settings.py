@@ -36,6 +36,7 @@ class DatabaseSettings(BaseModel):
 
 class PathsSettings(BaseModel):
     modules_path: DirectoryPath = Path(resolve_root("[ROOT]")) / "modules"
+    client_path: DirectoryPath = Path(resolve_root("[ROOT]")) / "client"
     metasploit_mod_info_path: FilePath = (
         Path(resolve_root("[ROOT]"))
         / "server"

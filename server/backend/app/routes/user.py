@@ -27,6 +27,8 @@ from app.exceptions import (
     NoLocalModulesError,
     ResourceNotFoundError,
     VersionConflictError,
+    VersionDotFileNotFoundError,
+    ClientUpToDateError,
 )
 from app.logger import get_logger
 from app.models.client import Client
@@ -571,6 +573,33 @@ async def user_stop_module(
     return BasicTaskResponse()
 
 
+@router.post("/user/modify/{client_username}/update", response_model=BasicTaskResponse)
+async def user_modify_client_update(
+    client_username: str,
+    _=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Client).where(Client.username == client_username))
+    client = result.scalar_one_or_none()
+    if not client:
+        raise ClientNotFoundError()
+
+    version_dot_file = Path(settings.paths.client_path) / ".version"
+    if not version_dot_file.is_file():
+        raise VersionDotFileNotFoundError()
+
+    try:
+        with open(version_dot_file) as f:
+            version = f.readlines()[0]
+    except FileNotFoundError as e:
+        raise VersionDotFileNotFoundError() from e
+
+    if version == client.version:
+        raise ClientUpToDateError()
+
+    # TODO: Determine how client will update
+
+
 @router.get("/metasploit/check", response_model=BasicTaskResponse)
 async def user_metasploit_check(_=Depends(get_current_user)):
     if not shutil.which("msfconsole"):
@@ -593,7 +622,7 @@ async def user_metasploit_modules(
 # - [X] /user/run/{module_name}
 # - [X] /user/stop/{job_uuid}
 # - [X] /user/metasploit/modules
-# - [ ] /user/modify/{client_username}/update
+# - [x] /user/modify/{client_username}/update
 # - [ ] /user/metasploit/info/{metasploit_mod_name}
 # - [ ] /user/metasploit/advanced-info/{metasploit_mod_name}
 # - [ ] /user/metasploit/run/{metasploit_mod_name}
