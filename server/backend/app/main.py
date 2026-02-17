@@ -1,3 +1,4 @@
+import asyncio
 import re
 from contextlib import asynccontextmanager
 
@@ -9,6 +10,7 @@ from app.db.session import engine
 from app.exceptions import register_exception_handlers
 from app.logger import get_logger
 from app.routes import client, client_auth, user, user_auth
+from app.services.metasploit_manager import metasploit_manager
 from app.services.module_manager import module_manager
 from app.services.websocket_manager import websocket_manager
 from app.settings import settings
@@ -24,6 +26,7 @@ async def lifespan(_: FastAPI):
             await conn.run_sync(Base.metadata.create_all)
 
     module_manager.set_ws_manager(websocket_manager)
+    asyncio.create_task(asyncio.to_thread(metasploit_manager.load_modules))
 
     try:
         yield

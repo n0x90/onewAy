@@ -201,9 +201,23 @@ class ClientUpToDateError(AppHTTPError):
         super().__init__(detail=self.detail, msg=self.detail)
 
 
+class MetasploitModuleNotFoundError(AppHTTPError):
+    status_code = 404
+
+    def __init__(self, mod_name: str):
+        self.detail = f"Metaploit module {mod_name} not found"
+        super().__init__(detail=self.detail, msg=self.msg)
+
+
 class WebsocketMessageInvalidDataType(AppWebsocketError):
     def __init__(self):
         super().__init__("Invalid websocket message data type")
+
+
+class MetasploitModulesNotLoadedError(Exception):
+    def __init__(self):
+        self.msg = "Metasploit modules are not loaded"
+        super().__init__(self.msg)
 
 
 class MissingRequiredFieldError(Exception):
@@ -233,6 +247,7 @@ class JobNotFoundError(Exception):
 class ClientUuidCouldNotBeResolved(Exception):
     def __init__(self, job_id: UUID):
         self.msg = f"Client UUID could not be resolved for {job_id!s}"
+        super().__init__(self.msg)
 
 
 def register_exception_handlers(app: FastAPI) -> None:

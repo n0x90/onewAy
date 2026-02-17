@@ -29,6 +29,7 @@ from app.exceptions import (
     VersionConflictError,
     VersionDotFileNotFoundError,
     ClientUpToDateError,
+    MetasploitModuleNotFoundError,
 )
 from app.logger import get_logger
 from app.models.client import Client
@@ -38,6 +39,7 @@ from app.models.refresh_token import RefreshToken
 from app.schemas.general import BasicTaskResponse
 from app.schemas.user import *
 from app.services.auth import hash_password
+from app.services.metasploit_manager import metasploit_manager
 from app.services.module_manager import module_manager
 from app.services.user_actions import (
     ModuleFromConfig,
@@ -616,14 +618,28 @@ async def user_metasploit_modules(
     pass
 
 
+@router.get(
+    "/metasploit/info/{metasploit_mod_name}",
+    response_model=UserMetasploitInfoModResponse,
+)
+async def user_metasploit_info_mod(
+    metasploit_mod_name: str, _=Depends(get_current_user)
+):
+    mod = metasploit_manager.get_module(metasploit_mod_name)
+    if not mod:
+        raise MetasploitModuleNotFoundError(metasploit_mod_name)
+
+    return UserMetasploitInfoModResponse(data=mod)
+
+
 # - [X] /user/modules/install
 # - [X] /user/modules/update-local
 # - [X] /user/modules/update-remote
 # - [X] /user/run/{module_name}
 # - [X] /user/stop/{job_uuid}
 # - [X] /user/metasploit/modules
-# - [x] /user/modify/{client_username}/update
-# - [ ] /user/metasploit/info/{metasploit_mod_name}
+# - [X] /user/modify/{client_username}/update
+# - [X] /user/metasploit/info/{metasploit_mod_name}
 # - [ ] /user/metasploit/advanced-info/{metasploit_mod_name}
 # - [ ] /user/metasploit/run/{metasploit_mod_name}
 # - [ ] /user/metasploit/stop/{metasploit_mod_name}

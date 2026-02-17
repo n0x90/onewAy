@@ -43,6 +43,12 @@ class PathsSettings(BaseModel):
         / "backend"
         / "metasploit_mod_options.json"
     )
+    metasploit_options_dump: FilePath = (
+        Path(resolve_root("[ROOT]"))
+        / "server"
+        / "backend"
+        / "metasploit_mod_options.json"
+    )
 
 
 class TestingSettings(BaseModel):

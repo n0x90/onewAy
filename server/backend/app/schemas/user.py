@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -57,3 +58,7 @@ class UserModifyClientInstallModuleRequest(BaseModel):
 
 class UserRunModuleRequest(BaseModel):
     client_username: str
+
+
+class UserMetasploitInfoModResponse(BaseModel):
+    data: dict[str, dict[str, Any]]

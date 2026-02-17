@@ -13,3 +13,4 @@ pymetasploit3
 pexpect
 tqdm
 PyYAML
+pymetasploit3
