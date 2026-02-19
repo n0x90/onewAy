@@ -241,7 +241,7 @@ def get_metasploit_version() -> dict[str, str] | None:
 
 def get_dump_version() -> dict[str, str] | None:
     try:
-        with open(settings.paths.metasploit_mod_info_path) as f:
+        with open(settings.metasploit.mod_info_path) as f:
             data = json.load(f)
 
         return {"Framework": data["Framework"], "Console": data["Console"]}
@@ -367,8 +367,8 @@ if __name__ == "__main__":
         for future in as_completed(futures):
             future.result()
 
-    print(f"[*] Writing to {settings.paths.metasploit_mod_info_path}")
-    with open(settings.paths.metasploit_mod_info_path, "w") as f:
+    print(f"[*] Writing to {settings.metasploit.mod_info_path}")
+    with open(settings.metasploit.mod_info_path, "w") as f:
         json.dump(output, f, indent=2)
 
     print("[+] Done!")

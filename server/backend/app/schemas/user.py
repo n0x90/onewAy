@@ -60,5 +60,9 @@ class UserRunModuleRequest(BaseModel):
     client_username: str
 
 
-class UserMetasploitInfoModResponse(BaseModel):
+class UserMetasploitOptionsModResponse(BaseModel):
+    data: dict[str, dict[str, Any]]
+
+
+class UserMetasploitAdvancedOptionsModResponse(BaseModel):
     data: dict[str, dict[str, Any]]

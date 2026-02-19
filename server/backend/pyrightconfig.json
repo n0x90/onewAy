@@ -1,0 +1,8 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "basic",
+  "include": ["app", "run.py", "add_user.py", "update_metasploit_mod_options.py"],
+  "exclude": [".venv", "alembic/versions"]
+}

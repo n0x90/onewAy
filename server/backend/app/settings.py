@@ -37,18 +37,24 @@ class DatabaseSettings(BaseModel):
 class PathsSettings(BaseModel):
     modules_path: DirectoryPath = Path(resolve_root("[ROOT]")) / "modules"
     client_path: DirectoryPath = Path(resolve_root("[ROOT]")) / "client"
-    metasploit_mod_info_path: FilePath = (
+
+
+class MetasploitSettings(BaseModel):
+    metasploit_active: bool = True
+    mod_info_path: FilePath = (
         Path(resolve_root("[ROOT]"))
         / "server"
         / "backend"
         / "metasploit_mod_options.json"
     )
-    metasploit_options_dump: FilePath = (
+    options_dump: FilePath = (
         Path(resolve_root("[ROOT]"))
         / "server"
         / "backend"
         / "metasploit_mod_options.json"
     )
+    msfrpc_password: str | None = None
+    ssl: bool = True
 
 
 class TestingSettings(BaseModel):
@@ -62,6 +68,7 @@ class Settings(BaseSettings):
     security: SecuritySettings
     database: DatabaseSettings
     paths: PathsSettings = Field(default_factory=PathsSettings)
+    metasploit: MetasploitSettings = Field(default_factory=MetasploitSettings)
     testing: TestingSettings = Field(default_factory=TestingSettings)
 
     model_config = SettingsConfigDict(toml_file=CONFIG_FILE, extra="ignore")
@@ -100,6 +107,17 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def remove_trailing_slash(self) -> Settings:
         self.app.frontend_url = self.app.frontend_url.rstrip("/")
+        return self
+
+    @model_validator(mode="after")
+    def check_msfrpc_password_set(self) -> Settings:
+        if (
+            self.metasploit.metasploit_active
+            and not settings.metasploit.msfrpc_password
+        ):
+            raise ValueError(
+                "Metasploit MSFRPC password must be set if Metasploit is turned on"
+            )
         return self
 
 

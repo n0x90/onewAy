@@ -14,6 +14,7 @@ from app.dependencies import get_current_user, get_db
 from app.exceptions import (
     ClientNotAliveError,
     ClientNotFoundError,
+    ClientUpToDateError,
     ClientUuidCouldNotBeResolved,
     ConfigYAMLError,
     CorruptedFieldError,
@@ -21,6 +22,7 @@ from app.exceptions import (
     FailedToStopJobError,
     InvalidPathError,
     JobNotFoundError,
+    MetasploitModuleNotFoundError,
     MissingRequiredFieldError,
     ModuleAlreadyExistsError,
     NoConfigFoundError,
@@ -28,8 +30,6 @@ from app.exceptions import (
     ResourceNotFoundError,
     VersionConflictError,
     VersionDotFileNotFoundError,
-    ClientUpToDateError,
-    MetasploitModuleNotFoundError,
 )
 from app.logger import get_logger
 from app.models.client import Client
@@ -619,17 +619,31 @@ async def user_metasploit_modules(
 
 
 @router.get(
-    "/metasploit/info/{metasploit_mod_name}",
-    response_model=UserMetasploitInfoModResponse,
+    "/metasploit/options/{metasploit_mod_name}",
+    response_model=UserMetasploitOptionsModResponse,
 )
-async def user_metasploit_info_mod(
+async def user_metasploit_options_mod(
     metasploit_mod_name: str, _=Depends(get_current_user)
 ):
-    mod = metasploit_manager.get_module(metasploit_mod_name)
+    mod = metasploit_manager.get_module_options(metasploit_mod_name)
     if not mod:
         raise MetasploitModuleNotFoundError(metasploit_mod_name)
 
-    return UserMetasploitInfoModResponse(data=mod)
+    return UserMetasploitOptionsModResponse(data=mod)
+
+
+@router.get(
+    "/metasploit/advanced-options/{metasploit_mod_name}",
+    response_model=UserMetasploitAdvancedOptionsModResponse,
+)
+async def user_metasploit_advanced_options_mod(
+    metasploit_mod_name: str, _=Depends(get_current_user)
+):
+    mod = metasploit_manager.get_module_options_advanced(metasploit_mod_name)
+    if not mod:
+        raise MetasploitModuleNotFoundError(metasploit_mod_name)
+
+    return UserMetasploitAdvancedOptionsModResponse(data=mod)
 
 
 # - [X] /user/modules/install
@@ -639,7 +653,7 @@ async def user_metasploit_info_mod(
 # - [X] /user/stop/{job_uuid}
 # - [X] /user/metasploit/modules
 # - [X] /user/modify/{client_username}/update
-# - [X] /user/metasploit/info/{metasploit_mod_name}
-# - [ ] /user/metasploit/advanced-info/{metasploit_mod_name}
+# - [X] /user/metasploit/options/{metasploit_mod_name}
+# - [X] /user/metasploit/advanced-options/{metasploit_mod_name}
 # - [ ] /user/metasploit/run/{metasploit_mod_name}
 # - [ ] /user/metasploit/stop/{metasploit_mod_name}
