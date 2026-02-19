@@ -1,6 +1,6 @@
 import asyncio
 import re
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
@@ -26,11 +26,18 @@ async def lifespan(_: FastAPI):
             await conn.run_sync(Base.metadata.create_all)
 
     module_manager.set_ws_manager(websocket_manager)
-    asyncio.create_task(asyncio.to_thread(metasploit_manager.load_modules))
+    load_modules_task = asyncio.create_task(
+        asyncio.to_thread(metasploit_manager.load_modules)
+    )
 
     try:
         yield
     finally:
+        if not load_modules_task.done():
+            load_modules_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await load_modules_task
+
         if settings.testing.testing:
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.drop_all)

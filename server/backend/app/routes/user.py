@@ -662,16 +662,3 @@ async def user_metasploit_run_mod(
 async def user_metasploit_stop(job_id: str, _=Depends(get_current_user)):
     metasploit_manager.stop_job(job_id)
     return BasicTaskResponse()
-
-
-# - [X] /user/modules/install
-# - [X] /user/modules/update-local
-# - [X] /user/modules/update-remote
-# - [X] /user/run/{module_name}
-# - [X] /user/stop/{job_uuid}
-# - [X] /user/metasploit/modules
-# - [X] /user/modify/{client_username}/update
-# - [X] /user/metasploit/options/{metasploit_mod_name}
-# - [X] /user/metasploit/advanced-options/{metasploit_mod_name}
-# - [X] /user/metasploit/run/{metasploit_mod_name}
-# - [x] /user/metasploit/stop/{metasploit_mod_name}
