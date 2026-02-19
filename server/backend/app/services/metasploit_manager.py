@@ -67,7 +67,6 @@ class MetasploitManager:
     ) -> dict[str, dict[str, Any]] | None:
         mod_type, mod_name = module_name.split("/", 1)
 
-        # FIX: validate module type before using RPC
         if mod_type not in MetasploitModuleType._value2member_map_:
             raise NotValidMetasploitModuleTypeError(mod_type)
 
@@ -111,6 +110,9 @@ class MetasploitManager:
             )
         else:
             return await loop.run_in_executor(None, mod.execute)
+
+    def stop_job(self, job_id: str) -> None:
+        self.session.jobs.stop(job_id)
 
 
 metasploit_manager = MetasploitManager()
