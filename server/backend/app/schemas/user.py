@@ -66,3 +66,11 @@ class UserMetasploitOptionsModResponse(BaseModel):
 
 class UserMetasploitAdvancedOptionsModResponse(BaseModel):
     data: dict[str, dict[str, Any]]
+
+
+class UserMetasploitRunModRequest(BaseModel):
+    opts: dict[str, Any]
+
+
+class UserMetasploitRunModResponse(BaseModel):
+    result: dict[str, Any]

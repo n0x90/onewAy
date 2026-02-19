@@ -646,6 +646,16 @@ async def user_metasploit_advanced_options_mod(
     return UserMetasploitAdvancedOptionsModResponse(data=mod)
 
 
+@router.post("/metasploit/run/{metasploit_mod_name}")
+async def user_metasploit_run_mod(
+    metasploit_mod_name: str,
+    request_data: UserMetasploitRunModRequest,
+    _=Depends(get_current_user),
+):
+    result = await metasploit_manager.run_module(metasploit_mod_name, request_data.opts)
+    return UserMetasploitRunModResponse(result=result)
+
+
 # - [X] /user/modules/install
 # - [X] /user/modules/update-local
 # - [X] /user/modules/update-remote
@@ -655,5 +665,5 @@ async def user_metasploit_advanced_options_mod(
 # - [X] /user/modify/{client_username}/update
 # - [X] /user/metasploit/options/{metasploit_mod_name}
 # - [X] /user/metasploit/advanced-options/{metasploit_mod_name}
-# - [ ] /user/metasploit/run/{metasploit_mod_name}
+# - [X] /user/metasploit/run/{metasploit_mod_name}
 # - [ ] /user/metasploit/stop/{metasploit_mod_name}

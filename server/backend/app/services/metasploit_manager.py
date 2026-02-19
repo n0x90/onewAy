@@ -1,10 +1,26 @@
+import asyncio
 import json
+from enum import StrEnum
 from typing import Any
 
 from pymetasploit3.msfrpc import MsfRpcClient
 
-from app.exceptions import MetasploitModulesNotLoadedError
+from app.exceptions import (
+    FailedToSetOptionsError,
+    MetasploitModulesNotLoadedError,
+    NotValidMetasploitModuleTypeError,
+)
 from app.settings import settings
+
+
+class MetasploitModuleType(StrEnum):
+    EXPLOIT = "exploit"
+    AUXILIARY = "auxiliary"
+    PAYLOAD = "payload"
+    POST = "post"
+    ENCODER = "encoder"
+    NOP = "nop"
+    EVASION = "evasion"
 
 
 class MetasploitManager:
@@ -50,12 +66,51 @@ class MetasploitManager:
         self, module_name: str
     ) -> dict[str, dict[str, Any]] | None:
         mod_type, mod_name = module_name.split("/", 1)
+
+        # FIX: validate module type before using RPC
+        if mod_type not in MetasploitModuleType._value2member_map_:
+            raise NotValidMetasploitModuleTypeError(mod_type)
+
         mod = self.session.modules.use(mod_type, mod_name)
         matched = self._match_module_options_defaults(module_name, mod.options)
         if not matched:
             return None
 
         return {module_name: matched}
+
+    async def run_module(
+        self, module_name: str, opts: dict[str, str], payload_number: int | None = None
+    ) -> dict[str, Any]:
+        mod_type, mod_name = module_name.split("/", 1)
+
+        if mod_type not in MetasploitModuleType._value2member_map_:
+            raise NotValidMetasploitModuleTypeError(mod_type)
+
+        mod = self.session.modules.use(mod_type, mod_name)
+
+        try:
+            for key, value in opts.items():
+                mod[key] = value
+        except (KeyError, IndexError) as e:
+            raise FailedToSetOptionsError() from e
+
+        loop = asyncio.get_running_loop()
+
+        if mod_type == MetasploitModuleType.EXPLOIT.value:
+            payloads = mod.payloads
+            if not payloads:
+                raise FailedToSetOptionsError()
+
+            if payload_number is None:
+                resolved_payload = payloads[0]
+            else:
+                resolved_payload = payloads[payload_number]
+
+            return await loop.run_in_executor(
+                None, lambda: mod.execute(payload=resolved_payload)
+            )
+        else:
+            return await loop.run_in_executor(None, mod.execute)
 
 
 metasploit_manager = MetasploitManager()

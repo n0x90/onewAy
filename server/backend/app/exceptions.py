@@ -250,6 +250,18 @@ class ClientUuidCouldNotBeResolved(Exception):
         super().__init__(self.msg)
 
 
+class FailedToSetOptionsError(Exception):
+    def __init__(self):
+        self.msg = "Failed to set options for Metasploit module"
+        super().__init__(self.msg)
+
+
+class NotValidMetasploitModuleTypeError(Exception):
+    def __init__(self, given_type: str):
+        self.msg = f"{given_type} is not a valid Metasploit module type"
+        super().__init__(self.msg)
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppHTTPError)
     async def app_error_handler(req: Request, exc: AppHTTPError):
