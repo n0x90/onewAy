@@ -1,13 +1,80 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FocusEvent, type SyntheticEvent } from 'react';
 import skyBg from '../assets/login-background.png';
+import { apiClient, isApiError } from '../services/apiClient';
+import type { UserAuthLoginRequest } from '../schemas/clientAuth';
+import { Severity, useErrorStore } from '../services/errorStore';
+import type { BasicTaskResponse } from '../schemas/general';
+
+type ApiUrlValidationState = 'unchecked' | 'valid' | 'invalid';
 
 export default function LoginPage() {
-  const [apiUrl, setApiUrl] = useState('https://localhost:8080/');
+  const [apiUrl, setApiUrl] = useState(() => {
+    return apiClient.getApiUrl() ?? 'https://localhost:8080';
+  });
+  const [apiUrlValidationState, setApiUrlValidationState] =
+    useState<ApiUrlValidationState>('unchecked');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const errors = useErrorStore((state) => state.errors);
+  const addError = useErrorStore((state) => state.addError);
+  const clearErrors = useErrorStore((state) => state.clearErrors);
+  const apiUrlInputValidationClass =
+    apiUrlValidationState === 'valid'
+      ? 'border-green-500 ring-green-500 focus:border-green-500 focus:ring-green-500'
+      : apiUrlValidationState === 'invalid'
+        ? 'border-red-500 ring-red-500 focus:border-red-500 focus:ring-red-500'
+        : 'border-slate-300 ring-sky-500 focus:border-slate-300 focus:ring-sky-500';
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const validateApiUrl = async (url: string): Promise<boolean> => {
+    const result = await apiClient.validateUrl(url);
+    setApiUrlValidationState(result ? 'valid' : 'invalid');
+
+    if (result) {
+      apiClient.setApiUrl(url);
+    }
+
+    return result;
+  };
+
+  const handleApiUrlBlur = async (event: FocusEvent<HTMLInputElement>) => {
+    const url = event.currentTarget.value;
+    if (url.length === 0) {
+      setApiUrlValidationState('unchecked');
+      return;
+    }
+
+    await validateApiUrl(url);
+  };
+
+  const handleSubmit = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
+    clearErrors();
+
+    if (
+      apiUrlValidationState !== 'valid' ||
+      apiClient.getApiUrl() !== apiUrl
+    ) {
+      const result = await validateApiUrl(apiUrl);
+
+      if (!result) {
+        addError({
+          severity: Severity.Error,
+          message: 'API URL validation failed',
+        });
+        return;
+      }
+    }
+
+    const data: UserAuthLoginRequest = { username, password };
+    const result = await apiClient.post<BasicTaskResponse, UserAuthLoginRequest>(
+      '/user/auth/login',
+      data,
+    );
+
+    if (isApiError(result)) {
+      addError(result);
+      return;
+    }
   };
 
   return (
@@ -17,6 +84,21 @@ export default function LoginPage() {
         style={{ backgroundImage: `url(${skyBg})`, filter: "blur(3px)" }}
       />
       <div className="absolute inset-0 bg-black/20" />
+
+      {errors.length > 0 && (
+        <div className="absolute left-1/2 top-6 z-20 w-full max-w-lg -translate-x-1/2 px-4">
+          <div className="space-y-2">
+            {errors.map((err) => (
+              <div
+                key={err.id}
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-700 shadow"
+              >
+                {err.message}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
         <div className="w-full max-w-md rounded-2xl border border-white/30 bg-white/80 p-8 shadow-xl">
@@ -37,8 +119,12 @@ export default function LoginPage() {
                 type="url"
                 placeholder="https://localhost:8000"
                 value={apiUrl}
-                onChange={(event) => setApiUrl(event.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-sky-500 transition focus:ring-2"
+                onChange={(event) => {
+                  setApiUrl(event.target.value);
+                  setApiUrlValidationState('unchecked');
+                }}
+                onBlur={handleApiUrlBlur}
+                className={`w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:ring-2 ${apiUrlInputValidationClass}`}
                 required
               />
             </div>

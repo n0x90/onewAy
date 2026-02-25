@@ -7,8 +7,19 @@ interface ErrorResponseBody {
   detail?: string;
 }
 
+export function isApiError(resp: unknown): resp is ApiError {
+  return (
+    typeof resp === 'object' &&
+    resp !== null &&
+    'statusCode' in resp &&
+    typeof (resp as { statusCode: unknown }).statusCode === 'number' &&
+    'detail' in resp &&
+    typeof (resp as { detail: unknown }).detail === 'string'
+  );
+}
+
 export class ApiClient {
-  apiUrl: string | undefined = undefined;
+  private apiUrl: string | undefined = undefined;
 
   async init(): Promise<void> {
     const apiUrl = localStorage.getItem('apiUrl');
@@ -156,7 +167,12 @@ export class ApiClient {
   }
 
   setApiUrl(url: string): void {
+    if (url.endsWith('/')) url = url.slice(0, -1);
     this.apiUrl = url;
+  }
+
+  getApiUrl(): string | undefined {
+    return this.apiUrl;
   }
 }
 
