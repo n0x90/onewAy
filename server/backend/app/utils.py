@@ -1,11 +1,6 @@
 import enum
 from pathlib import Path
 
-from app.logger import get_logger
-from app.settings import settings
-
-log = get_logger()
-
 
 class Platform(enum.StrEnum):
     """All supported platforms."""
@@ -25,6 +20,10 @@ def resolve_root(path: str) -> str:
 
 def get_local_modules_from_dir() -> list[str] | None:
     """Return local module directory names from the configured modules path."""
+    from app.logger import get_logger
+    from app.settings import settings
+
+    log = get_logger()
     module_dir = Path(settings.paths.modules_path)
     module_names = []
 

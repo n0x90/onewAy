@@ -3,6 +3,7 @@ uvicorn[standard]
 pydantic
 pydantic-settings
 starlette
+python-multipart
 sqlalchemy
 greenlet
 python-jose[cryptography]

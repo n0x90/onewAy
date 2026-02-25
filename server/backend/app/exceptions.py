@@ -209,6 +209,14 @@ class MetasploitModuleNotFoundError(AppHTTPError):
         super().__init__(detail=self.detail, msg=self.msg)
 
 
+class MetasploitServiceUnavailableError(AppHTTPError):
+    status_code = 503
+    detail = "Metasploit isn't active on the server"
+
+    def __init__(self):
+        super().__init__(detail=self.detail, msg=self.detail)
+
+
 class WebsocketMessageInvalidDataType(AppWebsocketError):
     def __init__(self):
         super().__init__("Invalid websocket message data type")

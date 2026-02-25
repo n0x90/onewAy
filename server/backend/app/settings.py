@@ -40,7 +40,7 @@ class PathsSettings(BaseModel):
 
 
 class MetasploitSettings(BaseModel):
-    metasploit_active: bool = True
+    active: bool = True
     mod_info_path: FilePath = (
         Path(resolve_root("[ROOT]"))
         / "server"
@@ -111,9 +111,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def check_msfrpc_password_set(self) -> Settings:
-        if (
-            self.metasploit.metasploit_active
-            and not settings.metasploit.msfrpc_password
+        msfrpc_password = self.metasploit.msfrpc_password
+        if self.metasploit.active and (
+            not msfrpc_password or not msfrpc_password.strip()
         ):
             raise ValueError(
                 "Metasploit MSFRPC password must be set if Metasploit is turned on"

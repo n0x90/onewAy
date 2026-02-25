@@ -20,23 +20,27 @@ log = get_logger()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    load_modules_task: asyncio.Task | None = None
+
     if settings.testing.testing:
         log.info(f"{'=' * 10} TESTING MODE {'=' * 10}")
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
     module_manager.set_ws_manager(websocket_manager)
-    load_modules_task = asyncio.create_task(
-        asyncio.to_thread(metasploit_manager.load_modules)
-    )
+    if metasploit_manager is not None:
+        load_modules_task = asyncio.create_task(
+            asyncio.to_thread(metasploit_manager.load_modules)
+        )
 
     try:
         yield
     finally:
-        if not load_modules_task.done():
-            load_modules_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await load_modules_task
+        if load_modules_task is not None:
+            if not load_modules_task.done():
+                load_modules_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await load_modules_task
 
         if settings.testing.testing:
             async with engine.begin() as conn:

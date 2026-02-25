@@ -23,6 +23,7 @@ from app.exceptions import (
     InvalidPathError,
     JobNotFoundError,
     MetasploitModuleNotFoundError,
+    MetasploitServiceUnavailableError,
     MissingRequiredFieldError,
     ModuleAlreadyExistsError,
     NoConfigFoundError,
@@ -51,6 +52,12 @@ from app.utils import get_local_modules_from_dir
 
 router = APIRouter(prefix="/user", tags=["user"])
 log = get_logger()
+
+
+def _require_metasploit_manager():
+    if not settings.metasploit.active or metasploit_manager is None:
+        raise MetasploitServiceUnavailableError()
+    return metasploit_manager
 
 
 @router.get("/me", response_model=UserMeResponse)
@@ -604,6 +611,8 @@ async def user_modify_client_update(
 
 @router.get("/metasploit/check", response_model=BasicTaskResponse)
 async def user_metasploit_check(_=Depends(get_current_user)):
+    _require_metasploit_manager()
+
     if not shutil.which("msfconsole"):
         log.warning("Metasploit not installed")
         return BasicTaskResponse(result="failed")
@@ -615,6 +624,7 @@ async def user_metasploit_check(_=Depends(get_current_user)):
 async def user_metasploit_modules(
     _=Depends(get_current_user),
 ):  # TODO: Determine paging argument in server/frontend
+    _require_metasploit_manager()
     pass
 
 
@@ -625,7 +635,8 @@ async def user_metasploit_modules(
 async def user_metasploit_options_mod(
     metasploit_mod_name: str, _=Depends(get_current_user)
 ):
-    mod = metasploit_manager.get_module_options(metasploit_mod_name)
+    manager = _require_metasploit_manager()
+    mod = manager.get_module_options(metasploit_mod_name)
     if not mod:
         raise MetasploitModuleNotFoundError(metasploit_mod_name)
 
@@ -639,7 +650,8 @@ async def user_metasploit_options_mod(
 async def user_metasploit_advanced_options_mod(
     metasploit_mod_name: str, _=Depends(get_current_user)
 ):
-    mod = metasploit_manager.get_module_options_advanced(metasploit_mod_name)
+    manager = _require_metasploit_manager()
+    mod = manager.get_module_options_advanced(metasploit_mod_name)
     if not mod:
         raise MetasploitModuleNotFoundError(metasploit_mod_name)
 
@@ -654,11 +666,13 @@ async def user_metasploit_run_mod(
     request_data: UserMetasploitRunModRequest,
     _=Depends(get_current_user),
 ):
-    result = await metasploit_manager.run_module(metasploit_mod_name, request_data.opts)
+    manager = _require_metasploit_manager()
+    result = await manager.run_module(metasploit_mod_name, request_data.opts)
     return UserMetasploitRunModResponse(result=result)
 
 
 @router.post("/metasploit/stop/{job-id}", response_model=BasicTaskResponse)
 async def user_metasploit_stop(job_id: str, _=Depends(get_current_user)):
-    metasploit_manager.stop_job(job_id)
+    manager = _require_metasploit_manager()
+    manager.stop_job(job_id)
     return BasicTaskResponse()

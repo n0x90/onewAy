@@ -115,4 +115,6 @@ class MetasploitManager:
         self.session.jobs.stop(job_id)
 
 
-metasploit_manager = MetasploitManager()
+metasploit_manager: MetasploitManager | None = None
+if settings.metasploit.active:
+    metasploit_manager = MetasploitManager()
