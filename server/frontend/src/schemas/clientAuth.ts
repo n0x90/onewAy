@@ -4,5 +4,5 @@ export interface UserAuthLoginRequest {
 }
 
 export interface UserAuthLoginResponse {
-  access_token: string,
+  accessToken: string,
 }

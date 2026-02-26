@@ -1,3 +1,8 @@
+import {
+  convertObjectKeysToCamelCase,
+  convertObjectKeysToSnakeCase,
+} from '../utils';
+
 export interface ApiError {
   statusCode: number;
   detail: string;
@@ -53,6 +58,15 @@ export class ApiClient {
       ...init,
     };
 
+    if (typeof requestInit.body === 'string') {
+      try {
+        const parsedBody = JSON.parse(requestInit.body) as unknown;
+        requestInit.body = JSON.stringify(convertObjectKeysToSnakeCase(parsedBody));
+      } catch {
+        // Leave body unchanged if it is not JSON.
+      }
+    }
+
     try {
       response = await fetch(this.apiUrl + endpoint, requestInit);
     } catch (err) {
@@ -94,7 +108,7 @@ export class ApiClient {
       };
     }
 
-    return data as TResponse;
+    return convertObjectKeysToCamelCase(data as TResponse);
   }
 
   async get<TResponse>(endpoint: string): Promise<TResponse | ApiError> {
@@ -163,12 +177,13 @@ export class ApiClient {
       return false;
     }
 
+    const normalized = convertObjectKeysToCamelCase(data as RootResponseBody);
     if (
-      typeof data === 'object' &&
-      data !== null &&
-      'message' in data &&
-      typeof (data as RootResponseBody).message === 'string' &&
-      (data as RootResponseBody).message === 'onewAy'
+      typeof normalized === 'object' &&
+      normalized !== null &&
+      'message' in normalized &&
+      typeof normalized.message === 'string' &&
+      normalized.message === 'onewAy'
     ) {
       return true;
     }
