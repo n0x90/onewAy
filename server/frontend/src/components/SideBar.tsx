@@ -9,7 +9,7 @@ export default function SideBar() {
           className={({ isActive }) =>
             `block rounded px-3 py-2 text-sm font-medium transition ${
               isActive
-                ? 'bg-slate-900 text-white'
+                ? 'bg-sky-800 text-white'
                 : 'text-slate-700 hover:bg-slate-200 hover:text-slate-900'
             }`
           }

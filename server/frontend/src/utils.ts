@@ -2,7 +2,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Object.prototype.toString.call(value) === '[object Object]';
 }
 
-export function convert_snake_case_to_pascel_case(value: string): string {
+export function convert_snake_case_to_pascal_case(value: string): string {
   return value
     .split('_')
     .filter((part) => part.length > 0)
@@ -11,7 +11,7 @@ export function convert_snake_case_to_pascel_case(value: string): string {
 }
 
 export function convertSnakeCaseToCamelCase(value: string): string {
-  const pascalCase = convert_snake_case_to_pascel_case(value);
+  const pascalCase = convert_snake_case_to_pascal_case(value);
   if (pascalCase.length === 0) return pascalCase;
   return pascalCase[0].toLowerCase() + pascalCase.slice(1);
 }
