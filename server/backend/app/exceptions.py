@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.logger import get_logger
 
@@ -107,6 +108,14 @@ class ClientNotFoundError(AppHTTPError):
 class UserNotFoundError(AppHTTPError):
     status_code = 404
     detail = "User not found"
+
+    def __init__(self):
+        super().__init__(msg=self.detail, detail=self.detail)
+
+
+class PageNotFound(AppHTTPError):
+    status_code = 404
+    detail = "Not Found"
 
     def __init__(self):
         super().__init__(msg=self.detail, detail=self.detail)
@@ -293,6 +302,22 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=422,
             content={"status_code": 422, "detail": "Validation error"},
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def starlette_http_error_handler(req: Request, exc: StarletteHTTPException):
+        if exc.status_code == 404:
+            err = PageNotFound()
+            log.warning(f"({req.url.path}) {err.detail}")
+            return JSONResponse(
+                status_code=err.status_code,
+                content={"status_code": err.status_code, "detail": err.detail},
+            )
+
+        log.warning(f"({req.url.path}) {exc.detail}")
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"status_code": exc.status_code, "detail": exc.detail},
         )
 
     @app.exception_handler(Exception)
