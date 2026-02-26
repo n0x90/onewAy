@@ -1,5 +1,9 @@
+import MainSkeleton from '../components/MainSkeleton';
+
 export default function Dashboard() {
   return (
-    <div>Dashboard</div>
+    <MainSkeleton>
+      <div>Hello World!</div>
+    </MainSkeleton>
   );
 }
