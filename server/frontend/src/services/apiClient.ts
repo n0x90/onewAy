@@ -7,6 +7,16 @@ interface ErrorResponseBody {
   detail?: string;
 }
 
+interface RootResponseBody {
+  message?: string;
+}
+
+export interface UserSessionStatus {
+  authenticated: boolean;
+}
+
+const AUTH_STORAGE_KEY = 'userAuthenticated';
+
 export function isApiError(resp: unknown): resp is ApiError {
   return (
     typeof resp === 'object' &&
@@ -156,9 +166,9 @@ export class ApiClient {
     if (
       typeof data === 'object' &&
       data !== null &&
-      'result' in data &&
-      typeof (data as { result?: unknown }).result === 'string' &&
-      (data as { result: string }).result === 'success'
+      'message' in data &&
+      typeof (data as RootResponseBody).message === 'string' &&
+      (data as RootResponseBody).message === 'onewAy'
     ) {
       return true;
     }
@@ -166,13 +176,40 @@ export class ApiClient {
     return false;
   }
 
+  async checkUserSession(): Promise<UserSessionStatus> {
+    const result = await this.get('/user/me');
+    if (isApiError(result)) {
+      return { authenticated: false };
+    }
+
+    return { authenticated: true };
+  }
+
   setApiUrl(url: string): void {
     if (url.endsWith('/')) url = url.slice(0, -1);
     this.apiUrl = url;
+    localStorage.setItem('apiUrl', url);
   }
 
   getApiUrl(): string | undefined {
     return this.apiUrl;
+  }
+
+  isAuthenticated(): boolean {
+    return localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
+  }
+
+  setAuthenticated(authenticated: boolean): void {
+    if (authenticated) {
+      localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+      return;
+    }
+
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+
+  clearAuth(): void {
+    this.setAuthenticated(false);
   }
 }
 

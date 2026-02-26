@@ -1,16 +1,25 @@
-import { useState, type FocusEvent, type SyntheticEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type FocusEvent,
+  type FormEvent,
+} from 'react';
+import { useNavigate } from 'react-router-dom';
 import skyBg from '../assets/login-background.png';
 import { apiClient, isApiError } from '../services/apiClient';
-import type { UserAuthLoginRequest } from '../schemas/clientAuth';
+import type {
+  UserAuthLoginRequest,
+  UserAuthLoginResponse,
+} from '../schemas/clientAuth';
 import { Severity, useErrorStore } from '../services/errorStore';
-import type { BasicTaskResponse } from '../schemas/general';
 
 type ApiUrlValidationState = 'unchecked' | 'valid' | 'invalid';
 
 export default function LoginPage() {
-  const [apiUrl, setApiUrl] = useState(() => {
-    return apiClient.getApiUrl() ?? 'https://localhost:8080';
-  });
+  const navigate = useNavigate();
+  const [initialApiUrl] = useState(() => apiClient.getApiUrl() ?? 'https://localhost:8000');
+  const [apiUrl, setApiUrl] = useState(initialApiUrl);
   const [apiUrlValidationState, setApiUrlValidationState] =
     useState<ApiUrlValidationState>('unchecked');
   const [username, setUsername] = useState('');
@@ -25,7 +34,7 @@ export default function LoginPage() {
         ? 'border-red-500 ring-red-500 focus:border-red-500 focus:ring-red-500'
         : 'border-slate-300 ring-sky-500 focus:border-slate-300 focus:ring-sky-500';
 
-  const validateApiUrl = async (url: string): Promise<boolean> => {
+  const validateApiUrl = useCallback(async (url: string): Promise<boolean> => {
     const result = await apiClient.validateUrl(url);
     setApiUrlValidationState(result ? 'valid' : 'invalid');
 
@@ -34,7 +43,37 @@ export default function LoginPage() {
     }
 
     return result;
-  };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkExistingSession = async () => {
+      if (apiClient.isAuthenticated()) {
+        navigate('/dashboard', { replace: true });
+        return;
+      }
+
+      if (!apiClient.getApiUrl()) {
+        const valid = await validateApiUrl(initialApiUrl);
+        if (!valid || cancelled) return;
+      } else {
+        setApiUrlValidationState('valid');
+      }
+
+      const status = await apiClient.checkUserSession();
+      if (cancelled || !status.authenticated) return;
+
+      apiClient.setAuthenticated(true);
+      navigate('/dashboard', { replace: true });
+    };
+
+    void checkExistingSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialApiUrl, navigate, validateApiUrl]);
 
   const handleApiUrlBlur = async (event: FocusEvent<HTMLInputElement>) => {
     const url = event.currentTarget.value;
@@ -46,7 +85,7 @@ export default function LoginPage() {
     await validateApiUrl(url);
   };
 
-  const handleSubmit = async (event: SyntheticEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     clearErrors();
 
@@ -66,7 +105,7 @@ export default function LoginPage() {
     }
 
     const data: UserAuthLoginRequest = { username, password };
-    const result = await apiClient.post<BasicTaskResponse, UserAuthLoginRequest>(
+    const result = await apiClient.post<UserAuthLoginResponse, UserAuthLoginRequest>(
       '/user/auth/login',
       data,
     );
@@ -75,13 +114,16 @@ export default function LoginPage() {
       addError(result);
       return;
     }
+
+    apiClient.setAuthenticated(true);
+    navigate('/dashboard', { replace: true });
   };
 
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div
         className="absolute inset-0 scale-105 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${skyBg})`, filter: "blur(3px)" }}
+        style={{ backgroundImage: `url(${skyBg})`, filter: 'blur(3px)' }}
       />
       <div className="absolute inset-0 bg-black/20" />
 

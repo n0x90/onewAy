@@ -1,15 +1,18 @@
+import { Route, Routes } from 'react-router-dom';
+import RequireAuth from './components/RequireAuth';
+import RootRedirect from './components/RootRedirect';
+import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/LoginPage';
-import { Navigate, Route, Routes } from 'react-router-dom';
 
 export default function App() {
   return (
     <Routes>
-      <Route
-        path="/"
-        element={<h1 className="text-xl font-bold text-red-700">Hello World!</h1>}
-      />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route element={<RequireAuth />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Route>
+      <Route path="/" element={<RootRedirect />} />
+      <Route path="*" element={<RootRedirect />} />
     </Routes>
   );
 }
