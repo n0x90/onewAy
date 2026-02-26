@@ -3,14 +3,26 @@ import asyncio
 import getpass
 import sys
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from app.db.session import AsyncSessionLocal
+from app.db.base import Base
+from app.db.session import AsyncSessionLocal, engine
 from app.models.user import User
 from app.services.auth import hash_password
 
 
+async def ensure_schema() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
 async def add_user(username: str):
+    try:
+        await ensure_schema()
+    except SQLAlchemyError as e:
+        print(f"[-] Unable to initialize database schema: {e!s}")
+        sys.exit(1)
+
     password = getpass.getpass("[*] Enter password: ")
     password_confirm = getpass.getpass("[*] Confirm password: ")
 
@@ -27,6 +39,9 @@ async def add_user(username: str):
             print(f"[+] User '{username}' created successfully")
         except IntegrityError:
             print(f"[-] User '{username}' already exists")
+            sys.exit(1)
+        except SQLAlchemyError as e:
+            print(f"[-] Unable to create user due to database error: {e!s}")
             sys.exit(1)
 
 
