@@ -1,3 +1,4 @@
+use crate::config::CONFIG;
 use chrono::Local;
 use std::fmt::Arguments;
 
@@ -20,64 +21,60 @@ impl LogLevel {
     }
 }
 
-pub fn log(level: LogLevel, args: Arguments<'_>, _file: &str, _line: u32, _module: &str) {
+pub(crate) fn log(level: LogLevel, args: Arguments<'_>) {
+    if !CONFIG.log {
+        return;
+    }
     let timestamp = Local::now().format("%m/%d/%Y %I:%M:%S %p");
     let message = format!("[{}] [{timestamp}] - {args}", level.as_str());
 
     match level {
         LogLevel::Warn | LogLevel::Error => eprintln!("{message}"),
-        LogLevel::Debug | LogLevel::Info => println!("{message}"),
+        LogLevel::Debug => {
+            if CONFIG.debug {
+                println!("{message}")
+            }
+        }
+        LogLevel::Info => println!("{message}"),
     }
 }
 
 #[macro_export]
-macro_rules! log_debug {
+macro_rules! debug {
     ($($arg:tt)*) => {
         $crate::logger::log(
             $crate::logger::LogLevel::Debug,
             format_args!($($arg)*),
-            file!(),
-            line!(),
-            module_path!(),
         )
     };
 }
 
 #[macro_export]
-macro_rules! log_info {
+macro_rules! info {
     ($($arg:tt)*) => {
         $crate::logger::log(
             $crate::logger::LogLevel::Info,
             format_args!($($arg)*),
-            file!(),
-            line!(),
-            module_path!(),
         )
     };
 }
 
 #[macro_export]
-macro_rules! log_warn {
+macro_rules! warn {
     ($($arg:tt)*) => {
         $crate::logger::log(
             $crate::logger::LogLevel::Warn,
             format_args!($($arg)*),
-            file!(),
-            line!(),
-            module_path!(),
         )
     };
 }
 
 #[macro_export]
-macro_rules! log_error {
+macro_rules! error {
     ($($arg:tt)*) => {
         $crate::logger::log(
             $crate::logger::LogLevel::Error,
             format_args!($($arg)*),
-            file!(),
-            line!(),
-            module_path!(),
         )
     };
 }
