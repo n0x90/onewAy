@@ -9,7 +9,7 @@ mod schemas;
 #[tokio::main]
 async fn main() {
     debug!("Starting onewAy client");
-    let client = ApiClient::new("http://localhost:8000").expect("Failed to create api client");
+    let client = ApiClient::new("https://localhost:8000").expect("Failed to create api client");
 
     let login_data: ClientAuthLoginRequest = ClientAuthLoginRequest {
         username: String::from("client_0"),
@@ -18,4 +18,6 @@ async fn main() {
     let response = client
         .post::<ClientAuthLoginRequest, ClientAuthLoginResponse>("/client/auth/login", &login_data)
         .await;
+
+    debug!("Response: {:?}", response);
 }

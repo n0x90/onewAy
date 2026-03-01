@@ -39,7 +39,7 @@ impl ApiClient {
     ) -> Result<T, ApiError> {
         let request = self
             .client
-            .get(format!("{}/{}", self.base_url, endpoint.into()));
+            .get(format!("{}{}", self.base_url, endpoint.into()));
         self.handle_request(request).await
     }
 
@@ -54,7 +54,7 @@ impl ApiClient {
     {
         let request = self
             .client
-            .post(format!("{}/{}", self.base_url, endpoint.into()))
+            .post(format!("{}{}", self.base_url, endpoint.into()))
             .json(body);
         self.handle_request(request).await
     }
