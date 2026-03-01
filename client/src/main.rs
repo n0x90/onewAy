@@ -5,6 +5,7 @@ mod api_client;
 mod config;
 mod logger;
 mod schemas;
+mod webocket_client;
 
 #[tokio::main]
 async fn main() {
