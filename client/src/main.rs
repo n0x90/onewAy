@@ -6,6 +6,7 @@ mod config;
 mod logger;
 mod schemas;
 mod websocket_client;
+mod module_manager;
 
 #[tokio::main]
 async fn main() {
