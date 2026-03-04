@@ -15,6 +15,7 @@ pub struct ApiErrorJson {
 pub struct ApiClient {
     base_url: String,
     client: Client,
+    access_token: Option<String>,
 }
 
 impl ApiClient {
@@ -30,6 +31,7 @@ impl ApiClient {
         Ok(Self {
             base_url: base_url.into(),
             client,
+            access_token: None,
         })
     }
 
@@ -88,5 +90,9 @@ impl ApiClient {
             status_code: status.as_u16() as i32,
             detail: backend_error.detail,
         })
+    }
+    
+    pub fn set_access_token(&mut self, access_token: impl Into<String>) {
+        self.access_token = Some(access_token.into());
     }
 }

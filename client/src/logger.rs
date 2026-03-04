@@ -1,6 +1,7 @@
 use crate::config::CONFIG;
 use chrono::Local;
 use std::fmt::Arguments;
+use std::process::exit;
 
 #[derive(Debug, Clone, Copy)]
 pub enum LogLevel {
@@ -8,6 +9,7 @@ pub enum LogLevel {
     Info,
     Warn,
     Error,
+    Fatal,
 }
 
 impl LogLevel {
@@ -17,6 +19,7 @@ impl LogLevel {
             Self::Info => "INFO",
             Self::Warn => "WARN",
             Self::Error => "ERROR",
+            Self::Fatal => "FATAL",
         }
     }
 }
@@ -29,7 +32,7 @@ pub(crate) fn log(level: LogLevel, args: Arguments<'_>) {
     let message = format!("[{}] [{timestamp}] - {args}", level.as_str());
 
     match level {
-        LogLevel::Warn | LogLevel::Error => eprintln!("{message}"),
+        LogLevel::Warn | LogLevel::Error | LogLevel::Fatal => eprintln!("{message}"),
         LogLevel::Debug => {
             if CONFIG.debug {
                 println!("{message}")
@@ -77,4 +80,16 @@ macro_rules! error {
             format_args!($($arg)*),
         )
     };
+}
+
+#[macro_export]
+macro_rules! critical {
+    ($($arg:tt)*) => {
+        $crate::logger::log(
+            $crate::logger::LogLevel::Error,
+            format_args!($($arg)*),
+        )
+
+        exit(1)
+    }
 }

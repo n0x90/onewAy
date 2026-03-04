@@ -5,12 +5,12 @@ mod api_client;
 mod config;
 mod logger;
 mod schemas;
-mod webocket_client;
+mod websocket_client;
 
 #[tokio::main]
 async fn main() {
     debug!("Starting onewAy client");
-    let client = ApiClient::new("https://localhost:8000").expect("Failed to create api client");
+    let mut client = ApiClient::new("https://localhost:8000").expect("Failed to create api client");
 
     let login_data: ClientAuthLoginRequest = ClientAuthLoginRequest {
         username: String::from("client_0"),
@@ -18,7 +18,8 @@ async fn main() {
     };
     let response = client
         .post::<ClientAuthLoginRequest, ClientAuthLoginResponse>("/client/auth/login", &login_data)
-        .await;
+        .await
+        .expect("Failed to login");
 
-    debug!("Response: {:?}", response);
+    client.set_access_token(response.access_token);
 }
