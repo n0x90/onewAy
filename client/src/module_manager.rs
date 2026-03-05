@@ -1,6 +1,8 @@
-﻿use crate::{debug, error};
+use crate::{debug, error};
 use std::path::{Path, PathBuf};
-use std::process::{ChildStdin, ChildStdout, Stdio};
+use std::process::Stdio;
+use tokio::process::{Child, ChildStdin, ChildStdout, Command};
+use uuid::Uuid;
 
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct ModuleConfig {
@@ -12,6 +14,7 @@ pub struct ModuleConfig {
 #[derive(Debug)]
 pub struct Job {
     pub uuid: String,
+    pub child: Child,
     pub stdout: ChildStdout,
     pub stdin: ChildStdin,
 }
@@ -65,7 +68,7 @@ impl ModuleManager {
     }
 
     pub fn run_module(&mut self, module: &mut Module) {
-        let child = std::process::Command::new(module.binary_path.clone())
+        let child = Command::new(module.binary_path.clone())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn();
@@ -81,9 +84,37 @@ impl ModuleManager {
 
         module.jobs.push(Job {
             uuid: uuid::Uuid::new_v4().to_string(),
+            child,
             stdin,
             stdout,
         })
+    }
+
+    pub async fn stop_module(&mut self, job_id: Uuid) {
+        let job_id = job_id.to_string();
+
+        if let Some((module_idx, job_idx)) = self
+            .modules
+            .iter()
+            .enumerate()
+            .find_map(|(module_idx, module)| {
+                module
+                    .jobs
+                    .iter()
+                    .position(|job| job.uuid == job_id)
+                    .map(|job_idx| (module_idx, job_idx))
+            })
+        {
+            let mut job = self.modules[module_idx].jobs.remove(job_idx);
+
+            if let Err(e) = job.child.kill().await {
+                error!("Failed to kill module job {}: {}", job_id, e);
+            }
+
+            if let Err(e) = job.child.wait().await {
+                error!("Failed waiting for module job {}: {}", job_id, e);
+            }
+        }
     }
 
     fn load_config(config_path: &Path) -> Result<ModuleConfig, std::io::Error> {
