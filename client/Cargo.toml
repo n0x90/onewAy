@@ -12,3 +12,4 @@ tokio-tungstenite = { version = "0.28.0" }
 futures = { version = "0.3.32" }
 serde_yaml = "0.9.34+deprecated"
 uuid = { version = "1.18.1", features = ["v4"] }
+serde_json = "1.0"

@@ -10,3 +10,8 @@ pub struct ClientAuthLoginRequest {
 pub struct ClientAuthLoginResponse {
     pub(crate) access_token: String,
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ClientAuthWsTokenResponse {
+    pub(crate) token: String,
+}

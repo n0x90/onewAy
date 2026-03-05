@@ -135,6 +135,7 @@ dependencies = [
  "futures",
  "reqwest",
  "serde",
+ "serde_json",
  "serde_yaml",
  "tokio",
  "tokio-tungstenite",

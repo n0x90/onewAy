@@ -65,6 +65,12 @@ impl ApiClient {
         &self,
         request: reqwest::RequestBuilder,
     ) -> Result<T, ApiError> {
+        let request = if let Some(access_token) = &self.access_token {
+            request.bearer_auth(access_token)
+        } else {
+            request
+        };
+
         let response = request.send().await.map_err(|e| ApiError {
             status_code: -1,
             detail: format!("Transport error: {}", e),
