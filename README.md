@@ -1,3 +1,4 @@
+<img src="onewAy_logo.png" width="400">
 # onewAy
 
 onewAy is a red-team framework inspired by Armitage. It is split into a web server (frontend + API) and a Rust client that can execute modular functionality.
