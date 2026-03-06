@@ -1,4 +1,4 @@
-use crate::config::CONFIG;
+use crate::config::{DEBUG, LOG};
 use chrono::Local;
 use std::fmt::Arguments;
 use std::process::exit;
@@ -25,7 +25,7 @@ impl LogLevel {
 }
 
 pub(crate) fn log(level: LogLevel, args: Arguments<'_>) {
-    if !CONFIG.log {
+    if !LOG {
         return;
     }
     let timestamp = Local::now().format("%m/%d/%Y %I:%M:%S %p");
@@ -34,7 +34,7 @@ pub(crate) fn log(level: LogLevel, args: Arguments<'_>) {
     match level {
         LogLevel::Warn | LogLevel::Error | LogLevel::Fatal => eprintln!("{message}"),
         LogLevel::Debug => {
-            if CONFIG.debug {
+            if DEBUG {
                 println!("{message}")
             }
         }

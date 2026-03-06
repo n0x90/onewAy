@@ -1,16 +1,6 @@
-#[derive(Debug)]
-pub struct Config {
-    pub log: bool,
-    pub debug: bool,
-}
+pub const API_URL: &str = env!("API_URL");
+pub const USERNAME: &str = env!("USERNAME");
+pub const PASSWORD: &str = env!("PASSWORD");
 
-impl Config {
-    const fn new() -> Self {
-        Self {
-            log: true,
-            debug: true,
-        }
-    }
-}
-
-pub const CONFIG: Config = Config::new();
+pub const LOG: bool = cfg!(oneway_log);
+pub const DEBUG: bool = cfg!(oneway_debug);
