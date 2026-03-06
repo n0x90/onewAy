@@ -12,6 +12,7 @@ use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use crate::websocket_message::WebsocketMessage;
 use crate::{debug, error};
 
+#[derive(Debug)]
 pub struct WebsocketClient {
     ws_url: String,
     ws_token: String,
@@ -103,5 +104,21 @@ impl WebsocketClient {
                 }
             }
         }
+    }
+    
+    pub async fn send(&self, message: WebsocketMessage) -> Result<(), Error> {
+        let payload = serde_json::to_string(&message).map_err(|err| {
+            Error::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, err.to_string()))
+        })?;
+
+        let mut write_guard = self.write.lock().await;
+        let ws_write = write_guard.as_mut().ok_or_else(|| {
+            Error::Io(std::io::Error::new(
+                std::io::ErrorKind::NotConnected,
+                "websocket writer is not available",
+            ))
+        })?;
+
+        ws_write.send(Message::Text(payload.into())).await
     }
 }

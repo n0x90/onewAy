@@ -1,8 +1,11 @@
 use crate::{debug, error};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::Arc;
 use tokio::process::{Child, ChildStdin, ChildStdout, Command};
 use uuid::Uuid;
+use crate::websocket_client::WebsocketClient;
+use crate::websocket_message::WebsocketMessage;
 
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct ModuleConfig {
@@ -29,12 +32,14 @@ pub struct Module  {
 #[derive(Debug)]
 pub struct ModuleManager {
     pub modules: Vec<Module>,
+    websocket_client: Option<Arc<WebsocketClient>>,
 }
 
 impl ModuleManager {
     pub fn new() -> Self {
         Self {
             modules: vec![],
+            websocket_client: None,
         }
     }
 
@@ -67,7 +72,11 @@ impl ModuleManager {
         Ok(())
     }
 
-    pub fn run_module(&mut self, module: &mut Module) {
+    pub fn set_websocket_client(&mut self, websocket_client: Arc<WebsocketClient>) {
+        self.websocket_client = Some(websocket_client);
+    }
+
+    pub async fn run_module(&mut self, module: &mut Module) {
         let child = Command::new(module.binary_path.clone())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -87,7 +96,15 @@ impl ModuleManager {
             child,
             stdin,
             stdout,
-        })
+        });
+
+        if let Some(websocket_client) = self.websocket_client.as_ref() {
+            let data: WebsocketMessage = WebsocketMessage::Start { module_name: module.data.name.clone() };
+            let result = websocket_client.send(data).await;
+            if let Err(e) = result {
+                error!("Failed to send websocket message: {}", e);
+            }
+        }
     }
 
     pub async fn stop_module(&mut self, job_id: Uuid) {
@@ -109,10 +126,12 @@ impl ModuleManager {
 
             if let Err(e) = job.child.kill().await {
                 error!("Failed to kill module job {}: {}", job_id, e);
+                self.send_error(e.to_string()).await;
             }
 
             if let Err(e) = job.child.wait().await {
                 error!("Failed waiting for module job {}: {}", job_id, e);
+                self.send_error(e.to_string()).await;
             }
         }
     }
@@ -124,5 +143,15 @@ impl ModuleManager {
         })?;
         
         Ok(config)
+    }
+
+    async fn send_error(&self, message: String) {
+        if let Some(websocket_client) = self.websocket_client.as_ref() {
+            let data: WebsocketMessage = WebsocketMessage::Error { message };
+            let result = websocket_client.send(data).await;
+            if let Err(e) = result {
+                error!("Failed to send websocket message: {}", e);
+            }
+        }
     }
 }
