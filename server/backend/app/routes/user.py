@@ -103,7 +103,7 @@ async def user_query_client_basic_info(
 @router.post("/register-client", response_model=BasicTaskResponse)
 async def user_register_client(
     client_info: UserRegisterClientRequest,
-    _=Depends(get_current_user),
+    user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Register a new client."""
@@ -112,6 +112,7 @@ async def user_register_client(
         hashed_password=hash_password(client_info.password),
         platform=client_info.platform,
         version="0.1.0",
+        owner_uuid=user.uuid,
     )
     db.add(new_client)
 

@@ -298,7 +298,14 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(req: Request, exc: RequestValidationError):
-        log.warning(f"({req.url.path}) Validation error: {exc.errors()}")
+        # Avoid logging raw validation payload/input data, which may contain secrets.
+        sanitized_errors = [
+            {"type": err.get("type"), "loc": err.get("loc")} for err in exc.errors()
+        ]
+        log.warning(
+            f"({req.url.path}) Validation error ({len(sanitized_errors)} issue(s)): "
+            f"{sanitized_errors}"
+        )
         return JSONResponse(
             status_code=422,
             content={"status_code": 422, "detail": "Validation error"},

@@ -1,0 +1,16 @@
+[package]
+name = "client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = { version = "0.4", features = ["clock"] }
+serde = { version = "1.0.228", features = ["derive"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "cookies", "native-tls"] }
+tokio = { version = "1.49.0", features = ["full"] }
+tokio-tungstenite = { version = "0.28.0", features = ["native-tls"] }
+futures = { version = "0.3.32" }
+serde_yaml = "0.9.34+deprecated"
+uuid = { version = "1.18.1", features = ["v4"] }
+serde_json = "1.0"
+native-tls = "0.2"
