@@ -80,5 +80,19 @@ class StopJob(WebsocketMessage):
 @dataclass(slots=True)
 class Stdout(WebsocketMessage):
     type = "stdout"
-    module_name: str
+    job_id: UUID
+    data: str
+
+
+@dataclass(slots=True)
+class Stdin(WebsocketMessage):
+    type = "stdin"
+    job_id: UUID
+    data: str
+
+
+@dataclass(slots=True)
+class Stderr(WebsocketMessage):
+    type = "stderr"
+    job_id: UUID
     data: str
