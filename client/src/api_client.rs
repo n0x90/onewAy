@@ -1,5 +1,10 @@
 use reqwest::Client;
 use serde::{Serialize, de::DeserializeOwned};
+use std::error::Error as StdError;
+use std::fs;
+
+use crate::config::{backend_cert_path, insecure_tls_enabled};
+use crate::warn;
 
 #[derive(Debug, Clone)]
 pub struct ApiError {
@@ -20,16 +25,47 @@ pub struct ApiClient {
 
 impl ApiClient {
     pub fn new(base_url: impl Into<String>) -> Result<Self, ApiError> {
-        let client = Client::builder()
-            .cookie_store(true)
-            .build()
-            .map_err(|e| ApiError {
-                status_code: -1,
-                detail: format!("Failed to build reqwest client: {}", e),
-            })?;
+        let base_url = base_url.into();
+        let allow_insecure_tls = insecure_tls_enabled();
+
+        let mut builder = Client::builder().cookie_store(true);
+        if base_url.starts_with("https://") {
+            if allow_insecure_tls {
+                warn!("ONEWAY_INSECURE_TLS enabled: TLS certificate and hostname verification disabled");
+                builder = builder
+                    .danger_accept_invalid_certs(true)
+                    .danger_accept_invalid_hostnames(true);
+            } else {
+                let cert_path = backend_cert_path();
+                let cert_pem = fs::read(&cert_path).map_err(|e| ApiError {
+                    status_code: -1,
+                    detail: format!(
+                        "Failed to read TLS certificate at {}: {}",
+                        cert_path.display(),
+                        e
+                    ),
+                })?;
+
+                let cert = reqwest::Certificate::from_pem(&cert_pem).map_err(|e| ApiError {
+                    status_code: -1,
+                    detail: format!(
+                        "Failed to parse TLS certificate PEM at {}: {}",
+                        cert_path.display(),
+                        e
+                    ),
+                })?;
+
+                builder = builder.add_root_certificate(cert);
+            }
+        }
+
+        let client = builder.build().map_err(|e| ApiError {
+            status_code: -1,
+            detail: format!("Failed to build reqwest client: {}", e),
+        })?;
 
         Ok(Self {
-            base_url: base_url.into(),
+            base_url,
             client,
             access_token: None,
         })
@@ -39,10 +75,12 @@ impl ApiClient {
         &self,
         endpoint: impl Into<String>,
     ) -> Result<T, ApiError> {
+        let endpoint = endpoint.into();
+        let url = format!("{}{}", self.base_url, endpoint);
         let request = self
             .client
-            .get(format!("{}{}", self.base_url, endpoint.into()));
-        self.handle_request(request).await
+            .get(url.clone());
+        self.handle_request(request, &url).await
     }
 
     pub async fn post<Req, Resp>(
@@ -54,16 +92,19 @@ impl ApiClient {
         Req: Serialize,
         Resp: DeserializeOwned,
     {
+        let endpoint = endpoint.into();
+        let url = format!("{}{}", self.base_url, endpoint);
         let request = self
             .client
-            .post(format!("{}{}", self.base_url, endpoint.into()))
+            .post(url.clone())
             .json(body);
-        self.handle_request(request).await
+        self.handle_request(request, &url).await
     }
 
     async fn handle_request<T: DeserializeOwned>(
         &self,
         request: reqwest::RequestBuilder,
+        url: &str,
     ) -> Result<T, ApiError> {
         let request = if let Some(access_token) = &self.access_token {
             request.bearer_auth(access_token)
@@ -71,9 +112,18 @@ impl ApiClient {
             request
         };
 
-        let response = request.send().await.map_err(|e| ApiError {
+        let response = request.send().await.map_err(|e| {
+            let mut detail = format!("Transport error for {}: {}", url, e);
+            let mut source = e.source();
+            while let Some(cause) = source {
+                detail.push_str(&format!("; caused by: {}", cause));
+                source = cause.source();
+            }
+
+            ApiError {
             status_code: -1,
-            detail: format!("Transport error: {}", e),
+            detail,
+        }
         })?;
 
         let status = response.status();

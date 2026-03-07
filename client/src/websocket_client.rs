@@ -1,16 +1,21 @@
 use std::sync::Arc;
+use std::{fs, io};
 
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
+use native_tls::{Certificate, TlsConnector};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::http::header::{AUTHORIZATION, HeaderValue};
 use tokio_tungstenite::tungstenite::{Error, Message};
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::connect_async_tls_with_config;
+use tokio_tungstenite::{Connector, MaybeTlsStream, WebSocketStream};
 
+use crate::config::{backend_cert_path, insecure_tls_enabled};
 use crate::websocket_message::WebsocketMessage;
-use crate::{debug, error};
+use crate::{debug, error, warn};
 
 #[derive(Debug)]
 pub struct WebsocketClient {
@@ -28,13 +33,42 @@ impl WebsocketClient {
         }
     }
 
-    pub async fn run(&self) -> Result<(), Error> {
+    pub async fn run(&self) -> Result<JoinHandle<()>, Error> {
         let mut request = self.ws_url.clone().into_client_request()?;
         let auth_header = HeaderValue::from_str(&format!("Bearer {}", self.ws_token))
             .expect("failed to build websocket authorization header");
         request.headers_mut().insert(AUTHORIZATION, auth_header);
 
-        let (ws_stream, _) = connect_async(request).await?;
+        let connector = if self.ws_url.starts_with("wss://") {
+            if insecure_tls_enabled() {
+                warn!("ONEWAY_INSECURE_TLS enabled: websocket TLS certificate and hostname verification disabled");
+                let tls_connector = TlsConnector::builder()
+                    .danger_accept_invalid_certs(true)
+                    .danger_accept_invalid_hostnames(true)
+                    .build()
+                    .map_err(tls_error_to_ws_error)?;
+                Some(Connector::NativeTls(tls_connector))
+            } else {
+                let cert_path = backend_cert_path();
+                let cert_pem = fs::read(&cert_path).map_err(|e| {
+                    Error::Io(io::Error::other(format!(
+                        "Failed to read TLS certificate at {}: {}",
+                        cert_path.display(),
+                        e
+                    )))
+                })?;
+                let cert = Certificate::from_pem(&cert_pem).map_err(tls_error_to_ws_error)?;
+                let tls_connector = TlsConnector::builder()
+                    .add_root_certificate(cert)
+                    .build()
+                    .map_err(tls_error_to_ws_error)?;
+                Some(Connector::NativeTls(tls_connector))
+            }
+        } else {
+            None
+        };
+
+        let (ws_stream, _) = connect_async_tls_with_config(request, None, false, connector).await?;
         debug!("Websocket connected to {}", self.ws_url);
         let (write, read) = ws_stream.split();
         {
@@ -42,11 +76,8 @@ impl WebsocketClient {
             *write_guard = Some(write);
         }
 
-        Self::async_recv(self.write.clone(), read).await;
-
-        let mut write_guard = self.write.lock().await;
-        *write_guard = None;
-        Ok(())
+        let handle = tokio::spawn(Self::async_recv(self.write.clone(), read));
+        Ok(handle)
     }
 
     async fn async_recv(
@@ -121,4 +152,8 @@ impl WebsocketClient {
 
         ws_write.send(Message::Text(payload.into())).await
     }
+}
+
+fn tls_error_to_ws_error(err: native_tls::Error) -> Error {
+    Error::Io(io::Error::other(format!("TLS configuration error: {}", err)))
 }
