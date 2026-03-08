@@ -1,8 +1,10 @@
+import os
 import shutil
 from pathlib import Path
 
 import yaml
-from fastapi import APIRouter, Depends, File, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Response, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +42,7 @@ from app.models.refresh_token import RefreshToken
 from app.schemas.general import BasicTaskResponse
 from app.schemas.user import *
 from app.services.auth import hash_password
+from app.services.client_builder import compile_client, get_current_client_version
 from app.services.metasploit_manager import metasploit_manager
 from app.services.module_manager import module_manager
 from app.services.user_actions import (
@@ -52,6 +55,15 @@ from app.utils import get_local_modules_from_dir
 
 router = APIRouter(prefix="/user", tags=["user"])
 log = get_logger()
+
+
+def _cleanup_build_dir(path: str) -> None:
+    shutil.rmtree(path, ignore_errors=True)
+
+
+def _which_cmd(cmd: str | os.PathLike[str]) -> str | None:
+    # Python <3.12 on Windows mishandles PathLike cmd values in shutil.which.
+    return shutil.which(os.fspath(cmd))
 
 
 def _require_metasploit_manager():
@@ -614,7 +626,7 @@ async def user_modify_client_update(
 async def user_metasploit_check(_=Depends(get_current_user)):
     _require_metasploit_manager()
 
-    if not shutil.which("msfconsole"):
+    if not _which_cmd("msfconsole"):
         log.warning("Metasploit not installed")
         return BasicTaskResponse(result="failed")
 
@@ -677,3 +689,37 @@ async def user_metasploit_stop(job_id: str, _=Depends(get_current_user)):
     manager = _require_metasploit_manager()
     manager.stop_job(job_id)
     return BasicTaskResponse()
+
+
+@router.post("/build-client")
+async def user_build_client(
+    client_info: UserBuildClientRequest,
+    background_tasks: BackgroundTasks,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    current_version = get_current_client_version()
+    zip_path = await compile_client(client_info)
+    build_dir = str(Path(zip_path).parent)
+
+    try:
+        client = Client(
+            username=client_info.username,
+            hashed_password=hash_password(client_info.password),
+            platform=client_info.platform,
+            version=current_version,
+            owner_uuid=user.uuid,
+        )
+        db.add(client)
+        await db.commit()
+    except SQLAlchemyError as e:
+        await db.rollback()
+        shutil.rmtree(build_dir, ignore_errors=True)
+        raise DatabaseError(str(e)) from e
+
+    background_tasks.add_task(_cleanup_build_dir, build_dir)
+    return FileResponse(
+        path=zip_path,
+        filename=f"{client_info.username}-client.zip",
+        media_type="application/zip",
+    )

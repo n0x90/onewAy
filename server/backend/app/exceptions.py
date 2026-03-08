@@ -226,6 +226,14 @@ class MetasploitServiceUnavailableError(AppHTTPError):
         super().__init__(detail=self.detail, msg=self.detail)
 
 
+class FailedToCreateClientError(AppHTTPError):
+    status_code = 500
+    detail = "Failed to create client"
+
+    def __init__(self, e: Exception):
+        super().__init__(detail=self.detail, msg=str(e))
+
+
 class WebsocketMessageInvalidDataType(AppWebsocketError):
     def __init__(self):
         super().__init__("Invalid websocket message data type")
@@ -277,6 +285,14 @@ class NotValidMetasploitModuleTypeError(Exception):
     def __init__(self, given_type: str):
         self.msg = f"{given_type} is not a valid Metasploit module type"
         super().__init__(self.msg)
+
+
+class FailedToCompileClientError(AppHTTPError):
+    status_code = 500
+    detail = "Failed to compile client"
+
+    def __init__(self, msg: str | None = None):
+        super().__init__(detail=self.detail, msg=msg or self.detail)
 
 
 def register_exception_handlers(app: FastAPI) -> None:

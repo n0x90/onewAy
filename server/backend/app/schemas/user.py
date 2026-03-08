@@ -74,3 +74,13 @@ class UserMetasploitRunModRequest(BaseModel):
 
 class UserMetasploitRunModResponse(BaseModel):
     result: dict[str, Any]
+
+
+class UserBuildClientRequest(BaseModel):
+    username: str
+    password: str
+    platform: Platform
+    api_url: str
+    log: bool = False
+    debug: bool = False
+    static: bool = True
