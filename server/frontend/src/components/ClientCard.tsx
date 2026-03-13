@@ -52,7 +52,7 @@ export default function ClientCard({ username }: ClientCardProps) {
       <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-3">
         <p>
           <span className="font-medium text-slate-900">IP:</span>{' '}
-          {clientBasicInfo.ipAddress ?? 'N/A'}
+          {clientBasicInfo.ipAddress === 'None' ? 'N/A' : clientBasicInfo.ipAddress ?? 'N/A'}
         </p>
         <p>
           <span className="font-medium text-slate-900">Host:</span>{' '}
@@ -60,7 +60,7 @@ export default function ClientCard({ username }: ClientCardProps) {
         </p>
         <p>
           <span className="font-medium text-slate-900">Platform:</span>{' '}
-          {clientBasicInfo.platform}
+          {clientBasicInfo.platform.charAt(0).toUpperCase() + clientBasicInfo.platform.slice(1)}
         </p>
       </div>
     </article>

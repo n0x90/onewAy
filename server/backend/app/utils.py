@@ -1,5 +1,12 @@
 import enum
 from pathlib import Path
+from typing import Literal
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Client, User
 
 
 class Platform(enum.StrEnum):
@@ -36,3 +43,18 @@ def get_local_modules_from_dir() -> list[str] | None:
     except OSError:
         log.error("Unable to get module names from modules directory")
         return None
+
+
+async def user_or_client_uuid(node_uuid: UUID, db: AsyncSession) -> Literal["user", "client"] | None:
+    """Return whether the node is a user or a client."""
+    result = await db.execute(select(Client).where(Client.uuid == node_uuid))
+    client = result.scalars().one_or_none()
+    if client:
+        return "client"
+
+    result = await db.execute(select(User).where(User.username == node_uuid))
+    user = result.scalars().one_or_none()
+    if user:
+        return "user"
+
+    return None

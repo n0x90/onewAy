@@ -96,3 +96,9 @@ class Stderr(WebsocketMessage):
     type = "stderr"
     job_id: UUID
     data: str
+
+
+@dataclass(slots=True)
+class UpdateAliveStatus(WebsocketMessage):
+    type = "update_alive_status"
+    alive: bool

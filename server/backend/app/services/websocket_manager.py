@@ -10,6 +10,7 @@ from app.services.websocket_message import (
     StartModule,
     Stdout,
     WebsocketMessage,
+    UpdateAliveStatus,
 )
 
 log = get_logger()
@@ -37,24 +38,27 @@ class WebsocketManager:
 
 
 async def handle_message(
-    client_uuid: UUID, websocket: WebSocket, msg: WebsocketMessage
+    node_uuid: UUID, websocket: WebSocket, msg: WebsocketMessage
 ) -> None:
     """Handle a parsed websocket message from a client."""
     match msg:
         case Error():
-            log.error("Received error message from %s: %s", client_uuid, msg.message)
+            log.error("Received error message from %s: %s", node_uuid, msg.message)
 
         case Ping():
-            log.info("Received ping from %s, sending pong", client_uuid)
+            log.info("Received ping from %s, sending pong", node_uuid)
             await websocket.send_json(Pong().to_json())
 
         case Pong():
-            log.debug("Received pong from %s", client_uuid)
+            log.debug("Received pong from %s", node_uuid)
 
         case StartModule():
             pass
 
         case Stdout():
+            pass
+
+        case UpdateAliveStatus():
             pass
 
         case _:
