@@ -5,12 +5,12 @@ from app.exceptions import (
     JobNotFoundError,
     NoWebsocketManagerSetError,
 )
-from app.services.websocket_manager import WebsocketManager
+from app.services.websocket_manager import WebsocketManager, client_websocket_manager
 from app.services.websocket_message import StartModule, StopJob
 
 
 class ModuleManager:
-    _ws_manager: WebsocketManager | None = None
+    _ws_manager: WebsocketManager | None = client_websocket_manager
 
     def __init__(self):
         self.state: dict[UUID, dict[UUID, str]] = {}
@@ -51,6 +51,15 @@ class ModuleManager:
         return [
             job_id for job_id, job_meta in self.state.items() if client_uuid in job_meta
         ]
+
+    def get_job_summaries_by_client(self, client_uuid: UUID) -> list[tuple[UUID, str]]:
+        summaries: list[tuple[UUID, str]] = []
+        for job_id, job_meta in self.state.items():
+            module_name = job_meta.get(client_uuid)
+            if module_name is not None:
+                summaries.append((job_id, module_name))
+
+        return summaries
 
 
 module_manager = ModuleManager()

@@ -101,4 +101,5 @@ class Stderr(WebsocketMessage):
 @dataclass(slots=True)
 class UpdateAliveStatus(WebsocketMessage):
     type = "update_alive_status"
+    client_uuid: UUID
     alive: bool

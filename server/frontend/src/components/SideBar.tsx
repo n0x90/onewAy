@@ -1,20 +1,32 @@
 import { NavLink } from 'react-router-dom';
 
-export default function SideBar() {
+type SideBarProps = {
+  metasploitAvailable: boolean;
+};
+
+const baseLinkClass = ({ isActive }: { isActive: boolean }) =>
+  `${isActive ? 'theme-nav-link theme-nav-link-active' : 'theme-nav-link'}`;
+
+export default function SideBar({ metasploitAvailable }: SideBarProps) {
   return (
-    <aside className="w-56 border-r border-slate-200 bg-slate-50 p-3">
-      <nav className="space-y-1">
-        <NavLink
-          to="/dashboard"
-          className={({ isActive }) =>
-            `block rounded px-3 py-2 text-sm font-medium transition ${
-              isActive
-                ? 'bg-sky-800 text-white'
-                : 'text-slate-700 hover:bg-slate-200 hover:text-slate-900'
-            }`
-          }
-        >
+    <aside className="theme-sidebar w-full p-4 lg:min-h-[calc(100vh-4rem)] lg:w-64 lg:shrink-0">
+      <nav className="space-y-2">
+        <NavLink to="/dashboard" className={baseLinkClass}>
           Dashboard
+        </NavLink>
+        <NavLink to="/clients" className={baseLinkClass}>
+          Clients
+        </NavLink>
+        <NavLink to="/modules" className={baseLinkClass}>
+          Modules
+        </NavLink>
+        {metasploitAvailable && (
+          <NavLink to="/metasploit" className={baseLinkClass}>
+            Metasploit
+          </NavLink>
+        )}
+        <NavLink to="/builder" className={baseLinkClass}>
+          Builder
         </NavLink>
       </nav>
     </aside>

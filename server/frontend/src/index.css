@@ -1,3 +1,160 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root,
+  :root[data-theme='sky'] {
+    --sky-bg: 240 249 255;
+    --sky-panel: 255 255 255;
+    --sky-panel-soft: 248 252 255;
+    --sky-sidebar: 231 243 255;
+    --sky-border: 186 230 253;
+    --sky-border-strong: 56 189 248;
+    --sky-text: 12 74 110;
+    --sky-text-soft: 71 85 105;
+    --sky-accent: 3 105 161;
+    --sky-accent-strong: 14 116 144;
+    --sky-success: 5 150 105;
+    --sky-success-soft: 220 252 231;
+    --sky-muted: 226 232 240;
+    --sky-shadow: 14 116 144;
+  }
+
+  html {
+    min-height: 100%;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+    color: rgb(var(--sky-text));
+    background: rgb(var(--sky-bg));
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .theme-shell {
+    @apply min-h-screen;
+  }
+
+  .theme-topbar {
+    @apply border-b;
+    border-color: rgba(var(--sky-border), 0.9);
+    background: rgb(var(--sky-panel));
+  }
+
+  .theme-sidebar {
+    @apply border-r;
+    border-color: rgba(var(--sky-border), 0.95);
+    background: rgb(var(--sky-sidebar));
+  }
+
+  .theme-surface {
+    @apply rounded-2xl border shadow-sm;
+    border-color: rgba(var(--sky-border), 0.92);
+    background: rgb(var(--sky-panel));
+  }
+
+  .theme-surface-soft {
+    @apply rounded-2xl border;
+    border-color: rgba(var(--sky-border), 0.72);
+    background: rgba(var(--sky-panel-soft), 0.9);
+  }
+
+  .theme-kicker {
+    @apply text-xs font-semibold uppercase tracking-[0.32em];
+    color: rgb(var(--sky-accent-strong));
+  }
+
+  .theme-page-title {
+    @apply text-3xl font-semibold tracking-tight;
+    color: rgb(var(--sky-text));
+  }
+
+  .theme-page-copy {
+    @apply text-sm leading-6;
+    color: rgb(var(--sky-text-soft));
+  }
+
+  .theme-nav-link {
+    @apply block rounded-lg px-4 py-3 text-sm font-medium transition;
+    color: rgb(var(--sky-text));
+  }
+
+  .theme-nav-link:hover {
+    background: skyblue;
+    color: rgb(var(--sky-accent));
+  }
+
+  .theme-nav-link-active {
+    background: rgb(var(--sky-accent));
+    color: white;
+  }
+
+  .theme-input,
+  .theme-select,
+  .theme-textarea {
+    @apply w-full rounded-2xl border px-4 py-3 text-sm outline-none transition;
+    border-color: rgba(var(--sky-border), 0.95);
+    background: rgba(255, 255, 255, 0.9);
+    color: rgb(var(--sky-text));
+  }
+
+  .theme-input:focus,
+  .theme-select:focus,
+  .theme-textarea:focus {
+    border-color: rgb(var(--sky-border-strong));
+    box-shadow: 0 0 0 4px rgba(var(--sky-border-strong), 0.18);
+  }
+
+  .theme-button-primary {
+    @apply inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition;
+    background: rgb(var(--sky-accent));
+    color: white;
+  }
+
+  .theme-button-primary:hover {
+    background: rgb(var(--sky-accent-strong));
+  }
+
+  .theme-button-secondary {
+    @apply inline-flex items-center justify-center rounded-2xl border px-4 py-2.5 text-sm font-semibold transition;
+    border-color: rgba(var(--sky-border), 0.92);
+    background: rgba(255, 255, 255, 0.82);
+    color: rgb(var(--sky-text));
+  }
+
+  .theme-button-secondary:hover {
+    border-color: rgba(var(--sky-border-strong), 0.92);
+    background: rgba(var(--sky-panel-soft), 0.95);
+  }
+
+  .theme-badge-online {
+    @apply rounded-full px-3 py-1 text-xs font-semibold;
+    background: rgb(var(--sky-success-soft));
+    color: rgb(var(--sky-success));
+  }
+
+  .theme-badge-offline {
+    @apply rounded-full px-3 py-1 text-xs font-semibold;
+    background: rgba(var(--sky-muted), 0.7);
+    color: rgb(var(--sky-text-soft));
+  }
+
+  .theme-divider {
+    border-color: rgba(var(--sky-border), 0.85);
+  }
+}

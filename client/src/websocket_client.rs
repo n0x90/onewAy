@@ -125,6 +125,13 @@ impl WebsocketClient {
                         WebsocketMessage::Stderr { job_id, data } => {
                             debug!("Received stderr for job {}: {}", job_id, data)
                         }
+                        WebsocketMessage::UpdateAliveStatus { client_uuid, alive } => {
+                            debug!(
+                                "Received update_alive_status for client {}: {}",
+                                client_uuid,
+                                alive
+                            )
+                        }
                     },
                     Err(err) => error!("Invalid websocket message received: {}", err),
                 },

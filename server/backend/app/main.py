@@ -11,8 +11,6 @@ from app.exceptions import register_exception_handlers
 from app.logger import get_logger
 from app.routes import client, client_auth, user, user_auth
 from app.services.metasploit_manager import metasploit_manager
-from app.services.module_manager import module_manager
-from app.services.websocket_manager import websocket_manager
 from app.settings import settings
 
 log = get_logger()
@@ -27,7 +25,6 @@ async def lifespan(_: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-    module_manager.set_ws_manager(websocket_manager)
     if metasploit_manager is not None:
         load_modules_task = asyncio.create_task(
             asyncio.to_thread(metasploit_manager.load_modules)

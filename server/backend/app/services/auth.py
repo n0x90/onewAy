@@ -148,15 +148,20 @@ async def authenticate_user(
 
 
 def extract_ws_token(websocket: WebSocket) -> str | None:
-    """Extract a websocket token from the Authorization header."""
+    """Extract a websocket token from the Authorization header or query string."""
     auth_header = websocket.headers.get("authorization")
-    if not auth_header:
-        return None
+    if auth_header:
+        scheme, sep, credentials = auth_header.partition(" ")
+        if sep and scheme.lower() == "bearer":
+            token = credentials.strip()
+            return token or None
 
-    scheme, sep, credentials = auth_header.partition(" ")
-    if sep and scheme.lower() == "bearer":
-        token = credentials.strip()
+        token = auth_header.strip()
         return token or None
 
-    token = auth_header.strip()
-    return token or None
+    token = websocket.query_params.get("token")
+    if token is None:
+        return None
+
+    normalized_token = token.strip()
+    return normalized_token or None

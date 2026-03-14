@@ -20,6 +20,11 @@ export interface UserSessionStatus {
   authenticated: boolean;
 }
 
+export interface DownloadResponse {
+  blob: Blob;
+  filename: string | null;
+}
+
 const AUTH_STORAGE_KEY = 'userAuthenticated';
 
 export function isApiError(resp: unknown): resp is ApiError {
@@ -31,6 +36,21 @@ export function isApiError(resp: unknown): resp is ApiError {
     'detail' in resp &&
     typeof (resp as { detail: unknown }).detail === 'string'
   );
+}
+
+function getFilenameFromHeaders(response: Response): string | null {
+  const contentDisposition = response.headers.get('content-disposition');
+  if (!contentDisposition) {
+    return null;
+  }
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+
+  const basicMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+  return basicMatch ? basicMatch[1] : null;
 }
 
 export class ApiClient {
@@ -46,13 +66,14 @@ export class ApiClient {
     }
   }
 
-  private async request<TResponse>(
+  private async send(
     endpoint: string,
     init: RequestInit = {},
-  ): Promise<TResponse | ApiError> {
-    if (!this.apiUrl) return { statusCode: -1, detail: 'Api url not set' };
+  ): Promise<Response | ApiError> {
+    if (!this.apiUrl) {
+      return { statusCode: -1, detail: 'Api url not set' };
+    }
 
-    let response: Response;
     const requestInit: RequestInit = {
       credentials: 'include',
       ...init,
@@ -67,6 +88,7 @@ export class ApiClient {
       }
     }
 
+    let response: Response;
     try {
       response = await fetch(this.apiUrl + endpoint, requestInit);
     } catch (err) {
@@ -76,22 +98,31 @@ export class ApiClient {
       };
     }
 
-    if (!response.ok) {
-      let detail: string;
-      try {
-        const body = (await response.json()) as ErrorResponseBody;
-        detail = body.detail ?? 'Unknown error';
-      } catch {
-        return {
-          statusCode: response.status,
-          detail: 'Server sent unkown error',
-        };
-      }
+    if (response.ok) {
+      return response;
+    }
 
-      return {
-        statusCode: response.status,
-        detail,
-      };
+    let detail: string;
+    try {
+      const body = (await response.json()) as ErrorResponseBody;
+      detail = body.detail ?? 'Unknown error';
+    } catch {
+      detail = 'Server sent unkown error';
+    }
+
+    return {
+      statusCode: response.status,
+      detail,
+    };
+  }
+
+  private async request<TResponse>(
+    endpoint: string,
+    init: RequestInit = {},
+  ): Promise<TResponse | ApiError> {
+    const response = await this.send(endpoint, init);
+    if (isApiError(response)) {
+      return response;
     }
 
     if (response.status === 204) {
@@ -126,6 +157,37 @@ export class ApiClient {
       },
       body: JSON.stringify(body),
     });
+  }
+
+  async postForm<TResponse>(
+    endpoint: string,
+    body: FormData,
+  ): Promise<TResponse | ApiError> {
+    return this.request<TResponse>(endpoint, {
+      method: 'POST',
+      body,
+    });
+  }
+
+  async postForDownload<TBody>(
+    endpoint: string,
+    body: TBody,
+  ): Promise<DownloadResponse | ApiError> {
+    const response = await this.send(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (isApiError(response)) {
+      return response;
+    }
+
+    return {
+      blob: await response.blob(),
+      filename: getFilenameFromHeaders(response),
+    };
   }
 
   async put<TResponse, TBody>(

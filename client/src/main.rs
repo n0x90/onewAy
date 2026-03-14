@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use std::time::Duration;
+
 use crate::api_client::ApiClient;
 use crate::config::{API_URL, PASSWORD, USERNAME};
 use crate::schemas::auth::{
@@ -6,6 +9,7 @@ use crate::schemas::auth::{
     ClientAuthWsTokenResponse,
 };
 use crate::websocket_client::WebsocketClient;
+use tokio::time::sleep;
 
 mod api_client;
 mod logger;
@@ -48,29 +52,50 @@ async fn main() {
     };
 
     client.set_access_token(response.access_token);
+    let ws_url = format!(
+        "{}/client/ws",
+        API_URL
+            .replace("https://", "wss://")
+            .replace("http://", "ws://")
+    );
 
-    let ws_token = client
-        .get::<ClientAuthWsTokenResponse>("/client/auth/ws-token")
-        .await;
-    let ws_token = match ws_token {
-        Ok(token) => token,
-        Err(err) => {
-            error!("Failed to get websocket token: {}", err.detail);
-            return;
+    loop {
+        let ws_token = client
+            .get::<ClientAuthWsTokenResponse>("/client/auth/ws-token")
+            .await;
+        let ws_token = match ws_token {
+            Ok(token) => token,
+            Err(err) => {
+                error!("Failed to get websocket token: {}", err.detail);
+                if err.status_code == 401 || err.status_code == 403 {
+                    return;
+                }
+
+                warn!("Retrying websocket setup in 3 seconds");
+                sleep(Duration::from_secs(3)).await;
+                continue;
+            }
+        };
+
+        let ws_client = Arc::new(WebsocketClient::new(ws_url.clone(), ws_token.token));
+        mod_manager.set_websocket_client(ws_client.clone());
+
+        let handle = match ws_client.run().await {
+            Ok(handle) => handle,
+            Err(err) => {
+                error!("Failed to run websocket client: {}", err);
+                warn!("Retrying websocket setup in 3 seconds");
+                sleep(Duration::from_secs(3)).await;
+                continue;
+            }
+        };
+
+        if let Err(err) = handle.await {
+            error!("Websocket task failed: {}", err);
+        } else {
+            warn!("Websocket connection closed");
         }
-    };
 
-    let ws_url = format!("{}/client/ws", API_URL.replace("https://", "wss://"));
-    let ws_client = WebsocketClient::new(ws_url, ws_token.token);
-    let handle = match ws_client.run().await {
-        Ok(handle) => handle,
-        Err(err) => {
-            error!("Failed to run websocket client: {}", err);
-            return;
-        }
-    };
-
-    if let Err(err) = handle.await {
-        error!("Websocket task failed: {}", err);
+        sleep(Duration::from_secs(3)).await;
     }
 }

@@ -18,6 +18,8 @@ class AppSettings(BaseModel):
     host: str = "0.0.0.0"
     port: int = 8000
     frontend_url: str = "https://localhost:5173"
+    websocket_ping_interval_seconds: int = 15
+    websocket_pong_timeout_seconds: int = 45
 
 
 class SecuritySettings(BaseModel):
@@ -107,6 +109,24 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def remove_trailing_slash(self) -> Settings:
         self.app.frontend_url = self.app.frontend_url.rstrip("/")
+        return self
+
+    @model_validator(mode="after")
+    def validate_websocket_heartbeat(self) -> Settings:
+        if self.app.websocket_ping_interval_seconds <= 0:
+            raise ValueError("websocket_ping_interval_seconds must be greater than 0")
+
+        if self.app.websocket_pong_timeout_seconds <= 0:
+            raise ValueError("websocket_pong_timeout_seconds must be greater than 0")
+
+        if (
+            self.app.websocket_pong_timeout_seconds
+            < self.app.websocket_ping_interval_seconds
+        ):
+            raise ValueError(
+                "websocket_pong_timeout_seconds must be greater than or equal to websocket_ping_interval_seconds"
+            )
+
         return self
 
     @model_validator(mode="after")

@@ -18,6 +18,7 @@ class UserAllClientsResponse(BaseModel):
 class UserQueryClientBasicInfoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    uuid: UUID
     username: str
     ip_address: str | None
     hostname: str | None
@@ -52,6 +53,32 @@ class UserQueryClientInstalledModulesResponse(BaseModel):
     installed_modules: list[str]
 
 
+class UserClientJobInfo(BaseModel):
+    job_uuid: UUID
+    module_name: str
+
+
+class UserQueryClientJobsResponse(BaseModel):
+    jobs: list[UserClientJobInfo]
+
+
+class UserModuleCatalogItemResponse(BaseModel):
+    name: str
+    description: str | None
+    version: str | None
+    local_version: str | None
+    in_database: bool
+    has_local_directory: bool
+    installed_client_count: int
+    supports_windows: bool
+    supports_mac: bool
+    supports_linux: bool
+
+
+class UserModuleCatalogResponse(BaseModel):
+    modules: list[UserModuleCatalogItemResponse]
+
+
 class UserModifyClientInstallModuleRequest(BaseModel):
     module_name: str
 
@@ -62,6 +89,19 @@ class UserRunModuleRequest(BaseModel):
 
 class UserMetasploitOptionsModResponse(BaseModel):
     data: dict[str, dict[str, Any]]
+
+
+class UserMetasploitModulesResponse(BaseModel):
+    modules: list[str]
+
+
+class UserMetasploitJobInfo(BaseModel):
+    job_id: str
+    description: str
+
+
+class UserMetasploitJobsResponse(BaseModel):
+    jobs: list[UserMetasploitJobInfo]
 
 
 class UserMetasploitAdvancedOptionsModResponse(BaseModel):

@@ -48,7 +48,6 @@ from app.models.client import Client
 from app.models.client_module import ClientModule
 from app.models.module import Module
 from app.models.refresh_token import RefreshToken
-from app.routes.client import ws_manager
 from app.routes.websocket_helpers import handle_authenticated_websocket
 from app.schemas.general import BasicTaskResponse
 from app.schemas.user import *
@@ -59,8 +58,10 @@ from app.services.module_manager import module_manager
 from app.services.user_actions import (
     ModuleFromConfig,
     materialize_module_upload,
+    parse_module_config_payload,
     parse_module_upload,
 )
+from app.services.websocket_manager import user_websocket_manager
 from app.settings import settings
 from app.utils import get_local_modules_from_dir
 
@@ -82,6 +83,29 @@ def _require_metasploit_manager():
     return metasploit_manager
 
 
+def _load_local_module_catalog() -> dict[str, ModuleFromConfig]:
+    module_root = Path(settings.paths.modules_path)
+    catalog: dict[str, ModuleFromConfig] = {}
+
+    try:
+        for child in module_root.iterdir():
+            if not child.is_dir():
+                continue
+
+            config_path = child / "config.yaml"
+            if not config_path.is_file():
+                continue
+
+            try:
+                catalog[child.name] = parse_module_config_payload(config_path.read_bytes())
+            except ConfigYAMLError:
+                log.warning("Skipping invalid local module config at %s", config_path)
+    except OSError as exc:
+        log.error("Failed to inspect local modules at %s: %s", module_root, exc)
+
+    return catalog
+
+
 @router.websocket("/ws")
 async def user_ws(websocket: WebSocket):
     """Handle authenticated user websocket connections and messages."""
@@ -96,10 +120,10 @@ async def user_ws(websocket: WebSocket):
         missing_entity_log_message=lambda _user_uuid: (
             "Failed to find user for websocket token"
         ),
-        connect=lambda _user_uuid, user, active_websocket: ws_manager.connect(
-            active_websocket, user
+        connect=lambda user_uuid, _user, active_websocket: user_websocket_manager.connect(
+            user_uuid, active_websocket
         ),
-        disconnect=ws_manager.disconnect,
+        disconnect=user_websocket_manager.disconnect,
     )
 
 
@@ -135,8 +159,9 @@ async def user_query_client_basic_info(
     client = await client_actions.get_client(client_username, db)
 
     return UserQueryClientBasicInfoResponse(
+        uuid=client.uuid,
         username=client.username,
-        ip_address=str(client.ip_address),
+        ip_address=str(client.ip_address) if client.ip_address else None,
         hostname=client.hostname,
         platform=client.platform,
         alive=client.alive,
@@ -296,6 +321,80 @@ async def user_query_client_installed_modules(
         )
     except SQLAlchemyError as e:
         raise DatabaseError(str(e)) from e
+
+
+@router.get(
+    "/query/{client_username}/jobs",
+    response_model=UserQueryClientJobsResponse,
+)
+async def user_query_client_jobs(
+    client_username: str,
+    _=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return active module jobs for a client by username."""
+    client = await client_actions.get_client(client_username, db)
+    jobs = module_manager.get_job_summaries_by_client(client.uuid)
+    return UserQueryClientJobsResponse(
+        jobs=[
+            UserClientJobInfo(job_uuid=job_uuid, module_name=module_name)
+            for job_uuid, module_name in jobs
+        ]
+    )
+
+
+@router.get("/modules", response_model=UserModuleCatalogResponse)
+async def user_modules_catalog(
+    _=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return merged database and local module metadata for the modules page."""
+    local_catalog = _load_local_module_catalog()
+
+    try:
+        result = await db.execute(select(Module).options(selectinload(Module.client_links)))
+        db_modules = result.scalars().all()
+    except SQLAlchemyError as e:
+        raise DatabaseError(str(e)) from e
+
+    db_catalog = {module.name: module for module in db_modules}
+    module_names = sorted(set(local_catalog.keys()) | set(db_catalog.keys()))
+
+    modules = []
+    for module_name in module_names:
+        db_module = db_catalog.get(module_name)
+        local_module = local_catalog.get(module_name)
+
+        supports_windows = bool(
+            (db_module and db_module.windows) or (local_module and local_module.windows)
+        )
+        supports_mac = bool(
+            (db_module and db_module.mac) or (local_module and local_module.mac)
+        )
+        supports_linux = bool(
+            (db_module and db_module.linux) or (local_module and local_module.linux)
+        )
+
+        modules.append(
+            UserModuleCatalogItemResponse(
+                name=module_name,
+                description=(
+                    db_module.description if db_module else local_module.description
+                ),
+                version=db_module.version if db_module else local_module.version,
+                local_version=local_module.version if local_module else None,
+                in_database=db_module is not None,
+                has_local_directory=local_module is not None,
+                installed_client_count=(
+                    len(db_module.client_links) if db_module is not None else 0
+                ),
+                supports_windows=supports_windows,
+                supports_mac=supports_mac,
+                supports_linux=supports_linux,
+            )
+        )
+
+    return UserModuleCatalogResponse(modules=modules)
 
 
 @router.post("/modify/{client_username}/block", response_model=BasicTaskResponse)
@@ -664,12 +763,29 @@ async def user_metasploit_check(_=Depends(get_current_user)):
     return BasicTaskResponse()
 
 
-@router.get("/metasploit/modules")
+@router.get(
+    "/metasploit/modules",
+    response_model=UserMetasploitModulesResponse,
+)
 async def user_metasploit_modules(
     _=Depends(get_current_user),
-):  # TODO: Determine paging argument in server/frontend
-    _require_metasploit_manager()
-    pass
+):
+    manager = _require_metasploit_manager()
+    return UserMetasploitModulesResponse(modules=manager.list_modules())
+
+
+@router.get(
+    "/metasploit/jobs",
+    response_model=UserMetasploitJobsResponse,
+)
+async def user_metasploit_jobs(_=Depends(get_current_user)):
+    manager = _require_metasploit_manager()
+    return UserMetasploitJobsResponse(
+        jobs=[
+            UserMetasploitJobInfo(job_id=job_id, description=description)
+            for job_id, description in manager.list_jobs()
+        ]
+    )
 
 
 @router.get(
@@ -715,7 +831,7 @@ async def user_metasploit_run_mod(
     return UserMetasploitRunModResponse(result=result)
 
 
-@router.post("/metasploit/stop/{job-id}", response_model=BasicTaskResponse)
+@router.post("/metasploit/stop/{job_id}", response_model=BasicTaskResponse)
 async def user_metasploit_stop(job_id: str, _=Depends(get_current_user)):
     manager = _require_metasploit_manager()
     manager.stop_job(job_id)

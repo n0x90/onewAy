@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App.tsx';
 
+document.documentElement.dataset.theme = 'sky';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

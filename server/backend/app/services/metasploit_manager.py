@@ -62,6 +62,9 @@ class MetasploitManager:
     def get_module_options(self, module_name: str) -> dict[str, Any] | None:
         return self.modules.get(module_name)
 
+    def list_modules(self) -> list[str]:
+        return sorted(self.modules.keys())
+
     def get_module_options_advanced(
         self, module_name: str
     ) -> dict[str, dict[str, Any]] | None:
@@ -113,6 +116,13 @@ class MetasploitManager:
 
     def stop_job(self, job_id: str) -> None:
         self.session.jobs.stop(job_id)
+
+    def list_jobs(self) -> list[tuple[str, str]]:
+        raw_jobs = self.session.jobs.list
+        if isinstance(raw_jobs, dict):
+            return [(str(job_id), str(description)) for job_id, description in raw_jobs.items()]
+
+        return []
 
 
 metasploit_manager: MetasploitManager | None = None

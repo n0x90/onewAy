@@ -26,4 +26,7 @@ pub enum WebsocketMessage {
 
     #[serde(rename = "stderr")]
     Stderr { job_id: String, data: String },
+
+    #[serde(rename = "update_alive_status")]
+    UpdateAliveStatus { client_uuid: String, alive: bool },
 }
