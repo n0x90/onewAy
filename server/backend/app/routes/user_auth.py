@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db
+from app.dependencies import get_db, get_current_user
 from app.exceptions import InvalidCredentialsError
 from app.schemas.user_auth import *
-from app.services.auth import TokenType, authenticate_user, create_access_token
+from app.services.auth import TokenType, authenticate_user, create_access_token, create_ws_token
 from app.settings import settings
 
 router = APIRouter(prefix="/user/auth", tags=["user", "auth"])
@@ -35,3 +35,9 @@ async def user_auth_login(
     )
 
     return UserAuthLoginResponse(access_token=access_token)
+
+
+@router.get("/ws-token", response_model=UserAuthWsTokenResponse)
+async def user_auth_ws_token(client=Depends(get_current_user)):
+    """Issue a short-lived websocket token for the authenticated user."""
+    return UserAuthWsTokenResponse(token=create_ws_token(client.uuid))

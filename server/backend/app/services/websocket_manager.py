@@ -1,8 +1,11 @@
 from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.websockets import WebSocket
 
 from app.logger import get_logger
+from app.models import Client, User
 from app.services.websocket_message import (
     Error,
     Ping,
@@ -38,7 +41,7 @@ class WebsocketManager:
 
 
 async def handle_message(
-    node_uuid: UUID, websocket: WebSocket, msg: WebsocketMessage
+    node_uuid: UUID, websocket: WebSocket, msg: WebsocketMessage, db: AsyncSession
 ) -> None:
     """Handle a parsed websocket message from a client."""
     match msg:
@@ -59,7 +62,19 @@ async def handle_message(
             pass
 
         case UpdateAliveStatus():
-            pass
+            result = await db.execute(select(Client).where(Client.uuid == node_uuid))
+            client = result.scalars().one_or_none()
+            if not client:
+                log.warning("Client %s not found", node_uuid)
+                return
+
+            result = await db.execute(select(User).where(User.uuid == client.owner_uuid))
+            user = result.scalars().one_or_none()
+            if not user:
+                log.warning("User %s not found", client.owner_uuid)
+                return
+
+            await websocket.send_json(msg.to_json())
 
         case _:
             log.warning("Unknown message type %s", msg)

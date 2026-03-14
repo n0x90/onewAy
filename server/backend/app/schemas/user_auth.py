@@ -8,3 +8,7 @@ class UserAuthLoginRequest(BaseModel):
 
 class UserAuthLoginResponse(BaseModel):
     access_token: str
+
+
+class UserAuthWsTokenResponse(BaseModel):
+    token: str

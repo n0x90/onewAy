@@ -80,13 +80,13 @@ def create_refresh_token(client_uuid: uuid.UUID) -> str:
     )
 
 
-def create_ws_token(client_uuid: uuid.UUID) -> str:
-    """Create a signed websocket token for a client."""
+def create_ws_token(node_uuid: uuid.UUID) -> str:
+    """Create a signed websocket token for a client or user."""
     expire = datetime.now(UTC) + timedelta(
         minutes=settings.security.access_token_expire_minutes
     )
     payload = {
-        "sub": str(client_uuid),
+        "sub": str(node_uuid),
         "exp": expire,
         "type": TokenType.WEBSOCKET.value,
     }
@@ -96,7 +96,7 @@ def create_ws_token(client_uuid: uuid.UUID) -> str:
 
 
 def verify_ws_token(token: str) -> uuid.UUID:
-    """Validate a websocket token and return the client UUID."""
+    """Validate a websocket token and return the node UUID."""
     try:
         payload = jwt.decode(
             token,

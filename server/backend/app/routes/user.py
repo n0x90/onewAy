@@ -3,7 +3,15 @@ import shutil
 from pathlib import Path
 
 import yaml
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Response,
+    UploadFile,
+    WebSocket,
+)
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -35,10 +43,13 @@ from app.exceptions import (
     VersionDotFileNotFoundError,
 )
 from app.logger import get_logger
+from app.models import User
 from app.models.client import Client
 from app.models.client_module import ClientModule
 from app.models.module import Module
 from app.models.refresh_token import RefreshToken
+from app.routes.client import ws_manager
+from app.routes.websocket_helpers import handle_authenticated_websocket
 from app.schemas.general import BasicTaskResponse
 from app.schemas.user import *
 from app.services.auth import hash_password
@@ -62,14 +73,34 @@ def _cleanup_build_dir(path: str) -> None:
 
 
 def _which_cmd(cmd: str | os.PathLike[str]) -> str | None:
-    # Python <3.12 on Windows mishandles PathLike cmd values in shutil.which.
-    return shutil.which(os.fspath(cmd))
+    return shutil.which(os.fsdecode(cmd))
 
 
 def _require_metasploit_manager():
     if not settings.metasploit.active or metasploit_manager is None:
         raise MetasploitServiceUnavailableError()
     return metasploit_manager
+
+
+@router.websocket("/ws")
+async def user_ws(websocket: WebSocket):
+    """Handle authenticated user websocket connections and messages."""
+    await handle_authenticated_websocket(
+        websocket,
+        model=User,
+        missing_token_code=4000,
+        missing_token_reason="Invalid token",
+        invalid_token_code=1008,
+        invalid_token_log_message="Failed to verify websocket token",
+        missing_entity_code=1008,
+        missing_entity_log_message=lambda _user_uuid: (
+            "Failed to find user for websocket token"
+        ),
+        connect=lambda _user_uuid, user, active_websocket: ws_manager.connect(
+            active_websocket, user
+        ),
+        disconnect=ws_manager.disconnect,
+    )
 
 
 @router.get("/me", response_model=UserMeResponse)
